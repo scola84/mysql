@@ -1,0 +1,14 @@
+{
+  "name": "@scola/mysql",
+  "version": "0.0.0",
+  "description": "MySQL Workers",
+  "repository": "github:scola84/mysql",
+  "author": "M.C. van den Boogaart <scola@kvdb.name>",
+  "license": "MIT",
+  "main": "./index.js",
+  "jsnext:main": "./index.js",
+  "dependencies": {
+    "@scola/worker": "^1.1.0",
+    "mysql": "^2.15.0"
+  }
+}
