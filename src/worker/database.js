@@ -5,10 +5,11 @@ const pools = {};
 let options = {};
 
 export default class DatabaseWorker extends Worker {
-  constructor(methods) {
+  constructor(methods = {}) {
     super(methods);
 
-    this._filter = null;
+    this._merge = methods.merge;
+
     this._id = '';
     this._table = '';
   }
@@ -29,9 +30,12 @@ export default class DatabaseWorker extends Worker {
     };
   }
 
-  setFilter(value) {
-    this._filter = value;
-    return this;
+  merge(box, data, result) {
+    if (this._merge) {
+      this._merge(box, data, result);
+    } else {
+      data.object = result;
+    }
   }
 
   setId(value) {

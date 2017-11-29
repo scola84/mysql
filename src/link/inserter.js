@@ -28,7 +28,7 @@ export default class LinkInserter extends DatabaseWorker {
     return this;
   }
 
-  act(request, data, callback) {
+  act(box, data, callback) {
     const value = {
       [this._leftId]: data[this._left][this._leftId],
       [this._rightId]: data[this._right][this._rightId]
@@ -41,15 +41,15 @@ export default class LinkInserter extends DatabaseWorker {
 
     this.getPool(this._table).query(query, values, (error) => {
       if (error) {
-        this.fail(request, error);
+        this.fail(box, error);
         return;
       }
 
-      this.pass(request, data, callback);
+      this.pass(box, data, callback);
     });
   }
 
-  decide(request, data) {
+  decide(box, data) {
     if (typeof data[this._left] === 'undefined') {
       throw new Error('404 Left part of link not found');
     }

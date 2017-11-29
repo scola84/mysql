@@ -2,35 +2,30 @@ import DatabaseWorker from '../worker/database';
 const query = 'INSERT INTO ?? SET ?';
 
 export default class ObjectInserter extends DatabaseWorker {
-  constructor(methods) {
-    super(methods);
-    this._filter = (request, data) => data;
-  }
-
-  act(request, data, callback) {
+  act(box, data, callback) {
     const values = [
       this._table,
-      this._filter(request, data, 'act')
+      this.filter(box, data, 'act')
     ];
 
     this
       .getPool(this._table)
       .query(query, values, (error, result) => {
         if (error) {
-          this.fail(request, error);
+          this.fail(box, error);
           return;
         }
 
-        data[this._table] = values[1];
-        data[this._table][this._id] = result.insertId;
-        data.object = data[this._table];
+        this.merge(box, data, Object.assign({
+          [this._id]: result.insertId
+        }, values[1]));
 
-        this.pass(request, data, callback);
+        this.pass(box, data, callback);
       });
   }
 
-  decide(request, data) {
-    const object = this._filter(request, data, 'decide');
+  decide(box, data) {
+    const object = this.filter(box, data, 'decide');
     return typeof object[this._id] === 'undefined';
   }
 }

@@ -2,13 +2,8 @@ import DatabaseWorker from '../worker/database';
 const query = 'UPDATE ?? SET ? WHERE ?? = ?';
 
 export default class ObjectUpdater extends DatabaseWorker {
-  constructor(methods) {
-    super(methods);
-    this._filter = (request, data) => data;
-  }
-
-  act(request, data, callback) {
-    const object = this._filter(request, data, 'act');
+  act(box, data, callback) {
+    const object = this.filter(box, data, 'act');
 
     const values = [
       this._table,
@@ -21,19 +16,17 @@ export default class ObjectUpdater extends DatabaseWorker {
       .getPool(this._table, values[3])
       .query(query, values, (error) => {
         if (error) {
-          this.fail(request, error);
+          this.fail(box, error);
           return;
         }
 
-        data[this._table] = Object.assign({}, values[1]);
-        data.object = data[this._table];
-
-        this.pass(request, data, callback);
+        this.merge(box, data, Object.assign({}, values[1]));
+        this.pass(box, data, callback);
       });
   }
 
-  decide(request, data) {
-    const object = this._filter(request, data, 'decide');
+  decide(box, data) {
+    const object = this.filter(box, data, 'decide');
     return typeof object[this._id] !== 'undefined';
   }
 }
