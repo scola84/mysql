@@ -10,8 +10,8 @@ export default class DatabaseWorker extends Worker {
 
     this._merge = methods.merge;
 
-    this._id = '';
-    this._table = '';
+    this._id = null;
+    this._table = null;
   }
 
   static setOptions(value) {
@@ -38,14 +38,10 @@ export default class DatabaseWorker extends Worker {
     }
   }
 
-  setId(value) {
-    this._id = value;
-    return this;
-  }
-
-  setTable(value) {
-    this._id = value + '_id';
+  setTable(value, id) {
     this._table = value;
+    this._id = id || value + '_id';
+
     return this;
   }
 }

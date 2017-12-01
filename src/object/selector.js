@@ -1,16 +1,17 @@
-import DatabaseWorker from '../worker/database';
-const query = 'SELECT * FROM ?? WHERE ?? = ?';
+import DatabaseSelector from '../worker/selector';
 
-export default class ObjectSelector extends DatabaseWorker {
+export default class ObjectSelector extends DatabaseSelector {
+  setTable(table, id) {
+    return super
+      .setTable(table, id)
+      .addWhere({ table: this._table, id: this._id });
+  }
+
   act(box, data, callback) {
-    const values = [
-      this._table,
-      this._id,
-      this.filter(box, data)
-    ];
+    const [query, values] = this._buildQuery(box, data);
 
     this
-      .getPool(this._table, values[2])
+      .getPool(this._table)
       .query(query, values, (error, result) => {
         if (error) {
           this.fail(box, error);

@@ -11,20 +11,14 @@ export default class LinkInserter extends DatabaseWorker {
     this._rightId = '';
   }
 
-  setId(left, right) {
-    this._leftId = left;
-    this._rightId = right;
-
-    return this;
-  }
-
-  setTable(left, right) {
+  setTable(left, right, leftId = null, rightId = null) {
     this._left = left;
-    this._leftId = left + '_id';
-    this._right = right;
-    this._rightId = right + '_id';
-    this._table = 'link_' + left + '_' + right;
+    this._leftId = leftId || left + '_id';
 
+    this._right = right;
+    this._rightId = rightId || right + '_id';
+
+    this._table = 'link_' + left + '_' + right;
     return this;
   }
 
@@ -39,14 +33,16 @@ export default class LinkInserter extends DatabaseWorker {
       value
     ];
 
-    this.getPool(this._table).query(query, values, (error) => {
-      if (error) {
-        this.fail(box, error);
-        return;
-      }
+    this
+      .getPool(this._table)
+      .query(query, values, (error) => {
+        if (error) {
+          this.fail(box, error);
+          return;
+        }
 
-      this.pass(box, data, callback);
-    });
+        this.pass(box, data, callback);
+      });
   }
 
   decide(box, data) {
