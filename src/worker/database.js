@@ -8,8 +8,6 @@ export default class DatabaseWorker extends Worker {
   constructor(methods = {}) {
     super(methods);
 
-    this._merge = methods.merge;
-
     this._id = null;
     this._table = null;
   }
@@ -28,14 +26,6 @@ export default class DatabaseWorker extends Worker {
         pools[name].query(string, values, callback);
       }
     };
-  }
-
-  merge(box, data, result) {
-    if (this._merge) {
-      this._merge(box, data, result);
-    } else {
-      data.object = result;
-    }
   }
 
   setTable(value, id) {
