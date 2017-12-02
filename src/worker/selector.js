@@ -16,7 +16,7 @@ const parts = {
     desc: '?? DESC',
     descsig: 'CAST(?? AS SIGNED) DESC'
   },
-  select: 'SELECT %s FROM %s %s WHERE 1 %s ORDER BY %s %s %s',
+  select: 'SELECT %s FROM %s %s WHERE 1 %s %s ORDER BY %s %s',
   where: '%s.%s %s'
 };
 
@@ -73,64 +73,6 @@ export default class DatabaseSelector extends DatabaseWorker {
     return this;
   }
 
-  _buildLimit(params, values) {
-    values[values.length] = Number(params.offset) || 0;
-    values[values.length] = Number(params.count) || 10;
-
-    return parts.limit;
-  }
-
-  _buildOrder(params, values) {
-    const order = [];
-
-    const ord = params.order;
-    const dir = params.dir || [];
-
-    for (let i = 0; i < ord.length; i += 1) {
-      order[order.length] = parts.order[dir[i]] || parts.order.asc;
-      values[values.length] = ord[i];
-    }
-
-    return order.join(',');
-  }
-
-  _buildQuery(box, data) {
-    const params = this.filter(box, data) || {};
-    const values = [];
-
-    let where = '';
-    let order = '';
-    let limit = '';
-
-    if (params.where) {
-      where = this._buildWhere(params, values);
-    }
-
-    if (params.order) {
-      order = this._buildOrder(params, values);
-    } else {
-      order = '1';
-    }
-
-    if (params.count) {
-      limit = this._buildLimit(params, values);
-    }
-
-    const query = format(
-      this._query,
-      where,
-      order,
-      limit
-    );
-
-    const options = {
-      sql: query,
-      nestTables: this._nest
-    };
-
-    return [options, values];
-  }
-
   _buildIn(field, value, values) {
     values[values.length] = value;
 
@@ -179,16 +121,76 @@ export default class DatabaseSelector extends DatabaseWorker {
     );
   }
 
+  _buildLimit(params, values) {
+    values[values.length] = params.offset || 0;
+    values[values.length] = params.count || 10;
+
+    return parts.limit;
+  }
+
+  _buildOrder(params, values) {
+    const order = [];
+
+    const ord = params.order;
+    const dir = params.dir || [];
+
+    for (let i = 0; i < ord.length; i += 1) {
+      order[order.length] = parts.order[dir[i]] || parts.order.asc;
+      values[values.length] = ord[i];
+    }
+
+    return order.join(', ');
+  }
+
+  _buildQuery(box, data) {
+    const params = this.filter(box, data) || {};
+    const values = [];
+
+    let where = '';
+    let order = '';
+    let limit = '';
+
+    if (params.where) {
+      where = this._buildWhere(params, values);
+    }
+
+    if (params.order) {
+      order = this._buildOrder(params, values);
+    } else {
+      order = '1';
+    }
+
+    if (params.count) {
+      limit = this._buildLimit(params, values);
+    }
+
+    const query = format(
+      this._query,
+      where,
+      order,
+      limit
+    );
+
+    const options = {
+      sql: query,
+      nestTables: this._nest
+    };
+
+    return [options, values];
+  }
+
   _buildWhere(params, values) {
+    const where = Array.isArray(params.where) ?
+      params.where : [params.where];
     const and = [];
 
     let field = null;
     let value = null;
 
     for (let i = 0; i < this._where.length; i += 1) {
-      value = params.where[i];
+      value = where[i];
 
-      if (typeof params.where[i] === 'string') {
+      if (typeof value === 'string') {
         const or = [];
         const like = value.match(regexp.like);
         const interval = value.match(regexp.interval);
@@ -209,7 +211,13 @@ export default class DatabaseSelector extends DatabaseWorker {
       }
     }
 
-    return ' AND (' + and.join(') AND (') + ')';
+    return and.length > 0 ? 'AND (' + and.join(') AND (') + ')' : '';
+  }
+
+  _prepareSelect(alias, columns = ['*']) {
+    return columns.map((column) => {
+      return alias + '.' + column;
+    }).join(', ');
   }
 
   _prepareQuery() {
@@ -218,28 +226,25 @@ export default class DatabaseSelector extends DatabaseWorker {
     let group = '';
 
     if (this._from.select !== false) {
-      select.push(format(
-        '%s.*',
-        this._table
-      ));
+      select.push(this._prepareSelect(this._table, this._from.columns));
     }
 
     this._join.forEach((link, index) => {
       const related = this._flat ?
         this._table :
-        (this._join[index - 1] && this._join[index - 1].select ?
-          this._join[index - 1].select :
+        (this._join[index - 1] && this._join[index - 1].alias ?
+          this._join[index - 1].alias :
           (index === 0 ?
             this._table :
             't' + (index - 1)));
 
-      if (link.select) {
+      if (link.alias) {
         if (link.group) {
           select.push(format(
             parts.group.concat,
-            link.select,
+            link.alias,
             link.group,
-            link.select
+            link.alias
           ));
 
           group = format(
@@ -248,10 +253,7 @@ export default class DatabaseSelector extends DatabaseWorker {
             this._id
           );
         } else {
-          select.push(format(
-            '%s.*',
-            link.select
-          ));
+          select.push(this._prepareSelect(link.alias, link.columns));
         }
       }
 
@@ -260,10 +262,10 @@ export default class DatabaseSelector extends DatabaseWorker {
         link.right ? 'link_' : '',
         link.left,
         link.right ? '_' + link.right : '',
-        link.select ? link.select : 't' + index,
+        link.alias ? link.alias : 't' + index,
         related,
         link.id ? link.id : link.left + '_id',
-        link.select ? link.select : 't' + index,
+        link.alias ? link.alias : 't' + index,
         link.id ? link.id : link.left + '_id'
       ));
     });
