@@ -4,10 +4,22 @@ import { format } from 'util';
 import DatabaseWorker from './database';
 
 const parts = {
-  group: {
-    by: 'GROUP BY %s.%s',
-    concat: 'GROUP_CONCAT(DISTINCT %s.%s) AS %s'
+  wrap: {
+    avg: 'AVG(%s)',
+    bit_and: 'BIT_AND(%s)',
+    bit_or: 'BIT_OR(%s)',
+    bit_xor: 'BIT_XOR(%s)',
+    coalesce: 'COALESCE(%s)',
+    concat: 'GROUP_CONCAT(DISTINCT %s)',
+    count: 'COUNT(DISTINCT %s)',
+    max: 'MAX(%s)',
+    min: 'MIN(%s)',
+    std: 'STD(%s)',
+    sum: 'SUM(%s)',
+    var: 'VARIANCE(%s)'
   },
+  alias: 'AS %s',
+  group: 'GROUP BY %s',
   join: 'LEFT JOIN %s%s%s %s ON %s.%s = %s.%s',
   limit: 'LIMIT ?, ?',
   order: {
@@ -16,8 +28,9 @@ const parts = {
     desc: '?? DESC',
     descsig: 'CAST(?? AS SIGNED) DESC'
   },
-  select: 'SELECT %s FROM %s %s WHERE 1 %s %s ORDER BY %s %s',
-  where: '%s.%s %s'
+  query: 'SELECT %s FROM %s %s WHERE 1 %s %s ORDER BY %s %s',
+  select: '%s.*',
+  where: '%s %s'
 };
 
 const regexp = {
@@ -29,35 +42,48 @@ export default class DatabaseSelector extends DatabaseWorker {
   constructor(methods) {
     super(methods);
 
+    this._coalesce = [];
+    this._concat = [];
     this._flat = false;
     this._from = {};
+    this._group = [];
     this._join = [];
     this._nest = false;
     this._query = '';
+    this._select = [];
     this._where = [];
   }
 
-  addJoin(link) {
-    this._join.push(link);
+  select(select) {
+    this._select.push(select);
     this._prepareQuery();
 
     return this;
   }
 
-  addWhere(...where) {
-    this._where.push(where);
+  join(join) {
+    this._join.push(join);
+    this._prepareQuery();
+
     return this;
   }
 
-  setFlat(value) {
-    this._flat = value;
-    return this;
-  }
-
-  setFrom(from) {
+  from(from) {
     this._from = from;
     this.setTable(from.table, from.id);
 
+    return this;
+  }
+
+  group(group) {
+    this._group.push(group);
+    this._prepareQuery();
+
+    return this;
+  }
+
+  where(...where) {
+    this._where.push(where);
     return this;
   }
 
@@ -78,7 +104,6 @@ export default class DatabaseSelector extends DatabaseWorker {
 
     return format(
       parts.where,
-      field.table || this._table,
       field.id,
       'IN (?)'
     );
@@ -91,7 +116,6 @@ export default class DatabaseSelector extends DatabaseWorker {
       values[values.length] = interval[2];
       intervals[intervals.length] = format(
         parts.where,
-        field.table || this._table,
         field.id,
         interval[1] === '[' ? '>= ?' : '> ?'
       );
@@ -101,7 +125,6 @@ export default class DatabaseSelector extends DatabaseWorker {
       values[values.length] = interval[3];
       intervals[intervals.length] = format(
         parts.where,
-        field.table || this._table,
         field.id,
         interval[4] === ']' ? '<= ?' : '< ?'
       );
@@ -115,7 +138,6 @@ export default class DatabaseSelector extends DatabaseWorker {
 
     return format(
       parts.where,
-      field.table || this._table,
       field.id,
       'LIKE ?'
     );
@@ -150,17 +172,17 @@ export default class DatabaseSelector extends DatabaseWorker {
     let order = '';
     let limit = '';
 
-    if (params.where) {
+    if (typeof params.where !== 'undefined') {
       where = this._buildWhere(params, values);
     }
 
-    if (params.order) {
+    if (typeof params.order !== 'undefined') {
       order = this._buildOrder(params, values);
     } else {
       order = '1';
     }
 
-    if (params.count) {
+    if (typeof params.count !== 'undefined') {
       limit = this._buildLimit(params, values);
     }
 
@@ -214,71 +236,70 @@ export default class DatabaseSelector extends DatabaseWorker {
     return and.length > 0 ? 'AND (' + and.join(') AND (') + ')' : '';
   }
 
-  _prepareSelect(alias, columns = ['*']) {
-    return columns.map((column) => {
-      return alias + '.' + column;
-    }).join(', ');
+  _prepareJoin(entry, index) {
+    const id = entry.id ? entry.id : entry.left + '_id';
+    const name = 't' + index;
+
+    const left = entry.left === this._table ?
+      this._table :
+      (index === 0 ?
+        this._table :
+        't' + (index - 1));
+
+    return format(
+      parts.join,
+      entry.right ? 'link_' : '',
+      entry.left,
+      entry.right ? '_' + entry.right : '',
+      name,
+      left,
+      id,
+      name,
+      id
+    );
   }
 
   _prepareQuery() {
-    const select = [];
     const join = [];
-    let group = '';
+    const select = [];
 
-    if (this._from.select !== false) {
-      select.push(this._prepareSelect(this._table, this._from.columns));
-    }
-
-    this._join.forEach((link, index) => {
-      const related = this._flat ?
-        this._table :
-        (this._join[index - 1] && this._join[index - 1].alias ?
-          this._join[index - 1].alias :
-          (index === 0 ?
-            this._table :
-            't' + (index - 1)));
-
-      if (link.alias) {
-        if (link.group) {
-          select.push(format(
-            parts.group.concat,
-            link.alias,
-            link.group,
-            link.alias
-          ));
-
-          group = format(
-            parts.group.by,
-            this._table,
-            this._id
-          );
-        } else {
-          select.push(this._prepareSelect(link.alias, link.columns));
-        }
-      }
-
-      join.push(format(
-        parts.join,
-        link.right ? 'link_' : '',
-        link.left,
-        link.right ? '_' + link.right : '',
-        link.alias ? link.alias : 't' + index,
-        related,
-        link.id ? link.id : link.left + '_id',
-        link.alias ? link.alias : 't' + index,
-        link.id ? link.id : link.left + '_id'
-      ));
+    this._select.forEach((entry) => {
+      select.push(this._prepareSelect(entry));
     });
 
+    this._join.forEach((entry, index) => {
+      join.push(this._prepareJoin(entry, index));
+    });
+
+    const group = this._group.length > 0 ? format(
+      parts.group,
+      this._group.join(', ')
+    ) : '';
+
     this._query = format(
-      parts.select,
-      select.length > 0 ? select.join(', ') : '',
+      parts.query,
+      select.length > 0 ? select.join(', ') : '*',
       this._table,
       join.length > 0 ? join.join(' ') : '',
       '%s',
-      group ? group : '',
+      group,
       '%s',
       '%s'
     );
+  }
+
+  _prepareSelect(entry) {
+    let select = entry.columns ? entry.columns.join(',') :
+      format(parts.select, entry.table);
+
+    select = (entry.wrap || []).reduce((result, name) => {
+      return format(parts.wrap[name], result);
+    }, select);
+
+    if (entry.alias) {
+      select += ' ' + format(parts.alias, entry.alias);
+    }
+
+    return select;
   }
 }

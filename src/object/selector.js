@@ -4,7 +4,7 @@ export default class ObjectSelector extends DatabaseSelector {
   setTable(table, id) {
     return super
       .setTable(table, id)
-      .addWhere({ table: this._table, id: this._id });
+      .where({ table: this._table, id: this._id });
   }
 
   act(box, data, callback) {
