@@ -1,6 +1,6 @@
 {
   "name": "@scola/mysql",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "MySQL Workers",
   "repository": "github:scola84/mysql",
   "author": "M.C. van den Boogaart <scola@kvdb.name>",
