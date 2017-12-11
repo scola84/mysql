@@ -30,7 +30,7 @@ const parts = {
   },
   query: 'SELECT %s FROM %s %s WHERE 1 %s %s ORDER BY %s %s',
   select: '%s.*',
-  where: '%s %s'
+  where: '%s.%s %s'
 };
 
 const regexp = {
@@ -45,7 +45,6 @@ export default class DatabaseSelector extends DatabaseWorker {
     this._coalesce = [];
     this._concat = [];
     this._flat = false;
-    this._from = {};
     this._group = [];
     this._join = [];
     this._nest = false;
@@ -69,8 +68,8 @@ export default class DatabaseSelector extends DatabaseWorker {
   }
 
   from(from) {
-    this._from = from;
-    this.setTable(from.table, from.id);
+    this._table = from.table;
+    this._prepareQuery();
 
     return this;
   }
@@ -104,6 +103,7 @@ export default class DatabaseSelector extends DatabaseWorker {
 
     return format(
       parts.where,
+      field.table || this._table,
       field.id,
       'IN (?)'
     );
@@ -116,6 +116,7 @@ export default class DatabaseSelector extends DatabaseWorker {
       values[values.length] = interval[2];
       intervals[intervals.length] = format(
         parts.where,
+        field.table || this._table,
         field.id,
         interval[1] === '[' ? '>= ?' : '> ?'
       );
@@ -125,6 +126,7 @@ export default class DatabaseSelector extends DatabaseWorker {
       values[values.length] = interval[3];
       intervals[intervals.length] = format(
         parts.where,
+        field.table || this._table,
         field.id,
         interval[4] === ']' ? '<= ?' : '< ?'
       );
@@ -138,6 +140,7 @@ export default class DatabaseSelector extends DatabaseWorker {
 
     return format(
       parts.where,
+      field.table || this._table,
       field.id,
       'LIKE ?'
     );

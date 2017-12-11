@@ -4,7 +4,7 @@ export default class ObjectSelector extends DatabaseSelector {
   setTable(table, id) {
     return super
       .setTable(table, id)
-      .where({ table: this._table, id: this._id });
+      .where({ id });
   }
 
   act(box, data, callback) {
@@ -21,5 +21,13 @@ export default class ObjectSelector extends DatabaseSelector {
         this.merge(box, data, result[0]);
         this.pass(box, data, callback);
       });
+  }
+
+  merge(box, data, object) {
+    if (this._merge) {
+      this._merge(box, data, object);
+    } else {
+      data.object = object;
+    }
   }
 }

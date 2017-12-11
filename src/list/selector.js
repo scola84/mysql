@@ -16,10 +16,4 @@ export default class ListSelector extends DatabaseSelector {
         this.pass(box, result, callback);
       });
   }
-
-  merge(box, data, result) {
-    if (this._merge) {
-      this._merge(box, data, result);
-    }
-  }
 }
