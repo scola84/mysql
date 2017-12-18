@@ -13,7 +13,7 @@ export default class ObjectUpdater extends DatabaseWorker {
     ];
 
     this
-      .getPool(this._table, values[3])
+      .getPool(this._table)
       .query(query, values, (error) => {
         if (error) {
           this.fail(box, error);

@@ -35,66 +35,54 @@ const parts = {
 
 const regexp = {
   interval: /([\[\(])([-+]?[0-9]*\.?[0-9]*);([-+]?[0-9]*\.?[0-9]*)([\)\]])/,
+  is: /^is ((not )?null)$/,
   like: /\*/
 };
 
 export default class DatabaseSelector extends DatabaseWorker {
-  constructor(methods) {
-    super(methods);
+  constructor(options = {}) {
+    super(options);
 
     this._coalesce = [];
     this._concat = [];
     this._flat = false;
     this._group = [];
     this._join = [];
-    this._nest = false;
-    this._query = '';
+    this._nest = null;
+    this._query = null;
     this._select = [];
     this._where = [];
+
+    this.setNest(options.nest);
+  }
+
+  setNest(value = false) {
+    this._nest = value;
+    return this;
   }
 
   select(select) {
     this._select.push(select);
-    this._prepareQuery();
-
     return this;
   }
 
   join(join) {
     this._join.push(join);
-    this._prepareQuery();
-
     return this;
   }
 
   from(from) {
     this._table = from.table;
-    this._prepareQuery();
-
     return this;
   }
 
   group(group) {
     this._group.push(group);
-    this._prepareQuery();
-
     return this;
   }
 
   where(...where) {
     this._where.push(where);
-    return this;
-  }
-
-  setNest(value) {
-    this._nest = value;
-    return this;
-  }
-
-  setTable(value, id) {
-    super.setTable(value, id);
-    this._prepareQuery();
-
     return this;
   }
 
@@ -135,6 +123,15 @@ export default class DatabaseSelector extends DatabaseWorker {
     return '(' + intervals.join(' AND ') + ')';
   }
 
+  _buildIs(field, is) {
+    return format(
+      parts.where,
+      field.table || this._table,
+      field.id,
+      is[0]
+    );
+  }
+
   _buildLike(field, value, values) {
     values[values.length] = value.replace(regexp.like, '%');
 
@@ -168,6 +165,10 @@ export default class DatabaseSelector extends DatabaseWorker {
   }
 
   _buildQuery(box, data) {
+    if (this._query === null) {
+      this._prepareQuery();
+    }
+
     const params = this.filter(box, data) || {};
     const values = [];
 
@@ -217,16 +218,19 @@ export default class DatabaseSelector extends DatabaseWorker {
 
       if (typeof value === 'string') {
         const or = [];
+        const is = value.match(regexp.is);
         const like = value.match(regexp.like);
         const interval = value.match(regexp.interval);
 
         for (let j = 0; j < this._where[i].length; j += 1) {
           field = this._where[i][j];
 
-          if (like) {
-            or[or.length] = this._buildLike(field, value, values);
-          } else if (interval) {
+          if (interval) {
             or[or.length] = this._buildInterval(field, interval, values);
+          } else if (is) {
+            or[or.length] = this._buildIs(field, is);
+          } else if (like) {
+            or[or.length] = this._buildLike(field, value, values);
           } else {
             or[or.length] = this._buildIn(field, value, values);
           }

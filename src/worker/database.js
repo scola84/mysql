@@ -2,23 +2,26 @@ import { Worker } from '@scola/worker';
 import mysql from 'mysql';
 
 const pools = {};
-let options = {};
+let poolOptions = {};
 
 export default class DatabaseWorker extends Worker {
-  constructor(methods = {}) {
-    super(methods);
+  constructor(options = {}) {
+    super(options);
 
     this._id = null;
     this._table = null;
+
+    this.setTable(options.table, options.id);
   }
 
   static setOptions(value) {
-    options = value;
+    poolOptions = value;
   }
 
   getPool(name = 'default') {
     if (!pools[name]) {
-      pools[name] = mysql.createPool(options[name] || options.default);
+      pools[name] = mysql
+        .createPool(poolOptions[name] || poolOptions.default);
     }
 
     return {
@@ -28,7 +31,7 @@ export default class DatabaseWorker extends Worker {
     };
   }
 
-  setTable(value, id) {
+  setTable(value = '', id = null) {
     this._table = value;
     this._id = id || value + '_id';
 

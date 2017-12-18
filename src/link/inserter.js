@@ -2,16 +2,19 @@ import DatabaseWorker from '../worker/database';
 const query = 'INSERT INTO ?? SET ?';
 
 export default class LinkInserter extends DatabaseWorker {
-  constructor(methods) {
-    super(methods);
+  constructor(options = {}) {
+    super(options);
 
-    this._left = '';
-    this._leftId = '';
-    this._right = '';
-    this._rightId = '';
+    this._left = null;
+    this._leftId = null;
+    this._right = null;
+    this._rightId = null;
+
+    this.setTable(options.left, options.right,
+      options.leftId, options.rightId);
   }
 
-  setTable(left, right, leftId = null, rightId = null) {
+  setTable(left = '', right = '', leftId = null, rightId = null) {
     this._left = left;
     this._leftId = leftId || left + '_id';
 
@@ -47,11 +50,11 @@ export default class LinkInserter extends DatabaseWorker {
 
   decide(box, data) {
     if (typeof data[this._left] === 'undefined') {
-      throw new Error('404 Left part of link not found');
+      throw new Error('Left part of link not found');
     }
 
     if (typeof data[this._right] === 'undefined') {
-      throw new Error('404 Right part of link not found');
+      throw new Error('Right part of link not found');
     }
 
     return true;
