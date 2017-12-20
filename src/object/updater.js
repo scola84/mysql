@@ -14,14 +14,18 @@ export default class ObjectUpdater extends DatabaseWorker {
 
     this
       .getPool(this._table)
-      .query(query, values, (error) => {
-        if (error) {
-          this.fail(box, error);
+      .query(query, values, (queryError) => {
+        if (queryError) {
+          this.fail(box, queryError);
           return;
         }
 
-        this.merge(box, data, Object.assign({}, values[1]));
-        this.pass(box, data, callback);
+        try {
+          this.merge(box, data, Object.assign({}, values[1]));
+          this.pass(box, data, callback);
+        } catch (error) {
+          this.fail(box, error, callback);
+        }
       });
   }
 
