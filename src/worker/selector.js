@@ -10,8 +10,8 @@ const parts = {
     bit_or: 'BIT_OR(%s)',
     bit_xor: 'BIT_XOR(%s)',
     coalesce: 'COALESCE(%s)',
-    concat: 'GROUP_CONCAT(DISTINCT %s)',
-    count: 'COUNT(DISTINCT %s)',
+    concat: 'GROUP_CONCAT(%s)',
+    count: 'COUNT(%s)',
     max: 'MAX(%s)',
     min: 'MIN(%s)',
     std: 'STD(%s)',
@@ -29,7 +29,10 @@ const parts = {
     descsig: 'CAST(?? AS SIGNED) DESC'
   },
   query: 'SELECT %s FROM %s %s WHERE 1 %s %s ORDER BY %s %s',
-  select: '%s.*',
+  select: {
+    all: '%s.*',
+    distinct: 'DISTINCT %s.*'
+  },
   where: '%s.%s %s'
 };
 
@@ -296,8 +299,11 @@ export default class DatabaseSelector extends DatabaseWorker {
   }
 
   _prepareSelect(entry) {
-    let select = entry.columns ? entry.columns.join(',') :
-      format(parts.select, entry.table);
+    let select = entry.distinct ?
+      parts.select.distinct : parts.select.all;
+
+    select = entry.columns ? entry.columns.join(',') :
+      format(select, entry.table);
 
     select = (entry.wrap || []).reduce((result, name) => {
       return format(parts.wrap[name], result);
