@@ -7,13 +7,17 @@ export default class ObjectSelector extends DatabaseSelector {
     this
       .getPool(this._table)
       .query(query, values, (queryError, result) => {
-        if (queryError) {
-          this.fail(box, queryError);
-          return;
-        }
-
         try {
-          this.merge(box, data, result[0]);
+          if (queryError) {
+            throw queryError;
+          }
+
+          const merged = this.merge(box, data, result[0]);
+
+          if (typeof merged !== 'undefined') {
+            data = merged;
+          }
+
           this.pass(box, data, callback);
         } catch (error) {
           this.fail(box, error, callback);
@@ -23,9 +27,10 @@ export default class ObjectSelector extends DatabaseSelector {
 
   merge(box, data, object) {
     if (this._merge) {
-      this._merge(box, data, object);
-    } else {
-      data.object = object;
+      return this._merge(box, data, object);
     }
+
+    data.object = object;
+    return data;
   }
 }

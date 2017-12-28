@@ -7,17 +7,29 @@ export default class ListSelector extends DatabaseSelector {
     this
       .getPool(this._table)
       .query(query, values, (queryError, result) => {
-        if (queryError) {
-          this.fail(box, queryError);
-          return;
-        }
-
         try {
-          this.merge(box, data, result);
-          this.pass(box, result, callback);
+          if (queryError) {
+            throw queryError;
+          }
+
+          const merged = this.merge(box, data, result);
+
+          if (typeof merged !== 'undefined') {
+            data = merged;
+          }
+
+          this.pass(box, data, callback);
         } catch (error) {
           this.fail(box, error, callback);
         }
       });
+  }
+
+  merge(box, data, list) {
+    if (this._merge) {
+      return this._merge(box, data, list);
+    }
+
+    return list;
   }
 }

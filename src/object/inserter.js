@@ -11,15 +11,18 @@ export default class ObjectInserter extends DatabaseWorker {
     this
       .getPool(this._table)
       .query(query, values, (queryError, result) => {
-        if (queryError) {
-          this.fail(box, queryError);
-          return;
-        }
-
         try {
-          this.merge(box, data, Object.assign({
+          if (queryError) {
+            throw queryError;
+          }
+
+          const merged = this.merge(box, data, Object.assign({
             [this._id]: result.insertId
           }, values[1]));
+
+          if (typeof merged !== 'undefined') {
+            data = merged;
+          }
 
           this.pass(box, data, callback);
         } catch (error) {
@@ -35,9 +38,10 @@ export default class ObjectInserter extends DatabaseWorker {
 
   merge(box, data, object) {
     if (this._merge) {
-      this._merge(box, data, object);
-    } else {
-      data.object = object;
+      return this._merge(box, data, object);
     }
+
+    data.object = object;
+    return data;
   }
 }
