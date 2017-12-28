@@ -8,7 +8,7 @@
   "main": "./index.js",
   "jsnext:main": "./index.js",
   "dependencies": {
-    "@scola/worker": "^1.6.2",
+    "@scola/worker": "^1.7.0",
     "mysql": "^2.15.0"
   }
 }
