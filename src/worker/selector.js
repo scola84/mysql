@@ -19,7 +19,7 @@ const parts = {
     sum: 'SUM(%s)',
     var: 'VARIANCE(%s)'
   },
-  alias: 'AS %s',
+  alias: 'AS `%s`',
   group: 'GROUP BY %s',
   join: 'LEFT JOIN %s%s%s %s ON %s.%s = %s.%s',
   limit: 'LIMIT ?, ?',
