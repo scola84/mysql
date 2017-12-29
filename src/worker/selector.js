@@ -5,6 +5,7 @@ import DatabaseWorker from './database';
 
 const parts = {
   wrap: {
+    any: 'ANY_VALUE(%s)',
     avg: 'AVG(%s)',
     bit_and: 'BIT_AND(%s)',
     bit_or: 'BIT_OR(%s)',
