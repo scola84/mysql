@@ -1,16 +1,11 @@
 import LinkInserter from './inserter';
-const query = 'REPLACE INTO ?? SET ?';
+const query = 'REPLACE INTO ?? VALUES ?';
 
 export default class LinkReplacer extends LinkInserter {
   act(box, data, callback) {
-    const value = {
-      [this._leftId]: data[this._left][this._leftId],
-      [this._rightId]: data[this._right][this._rightId]
-    };
-
     const values = [
       this._table,
-      value
+      this.filter(box, this._createValue(data))
     ];
 
     this
