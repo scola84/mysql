@@ -1,5 +1,9 @@
 import LinkWorker from './worker';
-const query = 'INSERT INTO ?? VALUES ?';
+
+const parts = {
+  list: 'INSERT INTO ?? VALUES ?',
+  object: 'INSERT INTO ?? SET ?'
+};
 
 export default class LinkInserter extends LinkWorker {
   act(box, data, callback) {
@@ -7,6 +11,9 @@ export default class LinkInserter extends LinkWorker {
       this._table,
       this.filter(box, this._createValue(data))
     ];
+
+    const query = Array.isArray(values[0]) ?
+      parts.list : parts.object;
 
     this
       .getPool(this._table)
