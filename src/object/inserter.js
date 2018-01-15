@@ -1,11 +1,13 @@
 import DatabaseWorker from '../worker/database';
-const query = 'INSERT INTO ?? SET ?';
+const query = 'INSERT INTO ?? (??) VALUES ?';
 
 export default class ObjectInserter extends DatabaseWorker {
   act(box, data, callback) {
+    const object = this.filter(box, data, 'act');
     const values = [
       this._table,
-      this.filter(box, data, 'act')
+      this._columns,
+      this._createInsert(object)
     ];
 
     this
@@ -16,9 +18,11 @@ export default class ObjectInserter extends DatabaseWorker {
             throw queryError;
           }
 
-          const merged = this.merge(box, data, Object.assign({
-            [this._id]: result.insertId
-          }, values[1]));
+          if (Array.isArray(object) === false) {
+            object[this._tableId] = result.insertId;
+          }
+
+          const merged = this.merge(box, data, object);
 
           if (typeof merged !== 'undefined') {
             data = merged;
@@ -33,7 +37,7 @@ export default class ObjectInserter extends DatabaseWorker {
 
   decide(box, data) {
     const object = this.filter(box, data, 'decide');
-    return typeof object[this._id] === 'undefined';
+    return typeof object[this._tableId] === 'undefined';
   }
 
   merge(box, data, object) {

@@ -12,6 +12,7 @@ const parts = {
     bit_xor: 'BIT_XOR(%s)',
     coalesce: 'COALESCE(%s)',
     concat: 'GROUP_CONCAT(%s)',
+    concat_ws: 'CONCAT_WS(" ",%s)',
     count: 'COUNT(%s)',
     max: 'MAX(%s)',
     min: 'MIN(%s)',
@@ -39,7 +40,7 @@ const parts = {
 
 const regexp = {
   interval: /([\[\(])([-+]?[0-9]*\.?[0-9]*);([-+]?[0-9]*\.?[0-9]*)([\)\]])/,
-  is: /^is ((not )?null)$/,
+  is: /^is-((not-)?null)$/,
   like: /\*/
 };
 
@@ -62,26 +63,6 @@ export default class DatabaseSelector extends DatabaseWorker {
 
   setNest(value = false) {
     this._nest = value;
-    return this;
-  }
-
-  select(select) {
-    this._select.push(select);
-    return this;
-  }
-
-  join(join) {
-    this._join.push(join);
-    return this;
-  }
-
-  from(from) {
-    this._table = from.table;
-    return this;
-  }
-
-  group(group) {
-    this._group.push(group);
     return this;
   }
 
@@ -132,7 +113,7 @@ export default class DatabaseSelector extends DatabaseWorker {
       parts.where,
       field.table || this._table,
       field.id,
-      is[0]
+      is[0].replace('-', ' ')
     );
   }
 
@@ -212,39 +193,57 @@ export default class DatabaseSelector extends DatabaseWorker {
   _buildWhere(params, values) {
     const where = Array.isArray(params.where) ?
       params.where : [params.where];
-    const and = [];
 
-    let field = null;
+    const and = [];
     let value = null;
 
     for (let i = 0; i < this._where.length; i += 1) {
       value = where[i];
 
       if (typeof value === 'string') {
-        const or = [];
-        const is = value.match(regexp.is);
-        const like = value.match(regexp.like);
-        const interval = value.match(regexp.interval);
+        value = value.split(' ');
 
-        for (let j = 0; j < this._where[i].length; j += 1) {
-          field = this._where[i][j];
-
-          if (interval) {
-            or[or.length] = this._buildInterval(field, interval, values);
-          } else if (is) {
-            or[or.length] = this._buildIs(field, is);
-          } else if (like) {
-            or[or.length] = this._buildLike(field, value, values);
-          } else {
-            or[or.length] = this._buildIn(field, value, values);
-          }
+        for (let j = 0; j < value.length; j += 1) {
+          this._buildWhereAnd(i, and, value[j], values);
         }
-
-        and.push(or.join(' OR '));
       }
     }
 
     return and.length > 0 ? 'AND (' + and.join(') AND (') + ')' : '';
+  }
+
+  _buildWhereAnd(i, and, value, values) {
+    const or = [];
+    let field = null;
+
+    for (let j = 0; j < this._where[i].length; j += 1) {
+      field = this._where[i][j];
+
+      const interval = value.match(regexp.interval);
+
+      if (interval) {
+        or[or.length] = this._buildInterval(field, interval, values);
+        break;
+      }
+
+      const is = value.match(regexp.is);
+
+      if (is) {
+        or[or.length] = this._buildIs(field, is);
+        break;
+      }
+
+      const like = value.match(regexp.like);
+
+      if (like) {
+        or[or.length] = this._buildLike(field, value, values);
+        break;
+      }
+
+      or[or.length] = this._buildIn(field, value, values);
+    }
+
+    and.push(or.join(' OR '));
   }
 
   _prepareJoin(entry, index) {

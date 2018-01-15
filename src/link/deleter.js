@@ -3,14 +3,13 @@ const query = 'DELETE FROM ?? WHERE ?? IN (?) AND ?? IN (?)';
 
 export default class LinkDeleter extends LinkWorker {
   act(box, data, callback) {
-    const object = this.filter(box, this._createValue(data));
-
+    const link = this.filter(box, data);
     const values = [
       this._table,
       this._leftId,
-      object[this._leftId],
+      link[this._leftId],
       this._rightId,
-      object[this._rightId]
+      link[this._rightId]
     ];
 
     this

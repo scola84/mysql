@@ -2,6 +2,7 @@ import DatabaseWorker from './src/worker/database';
 import LinkDeleter from './src/link/deleter';
 import LinkInserter from './src/link/inserter';
 import LinkReplacer from './src/link/replacer';
+import LinkUpdater from './src/link/updater';
 import ListSelector from './src/list/selector';
 import ObjectDeleter from './src/object/deleter';
 import ObjectInserter from './src/object/inserter';
@@ -13,6 +14,7 @@ export {
   LinkDeleter,
   LinkInserter,
   LinkReplacer,
+  LinkUpdater,
   ListSelector,
   ObjectDeleter,
   ObjectInserter,

@@ -9,33 +9,22 @@ export default class LinkWorker extends DatabaseWorker {
     this._right = null;
     this._rightId = null;
 
-    this.setTable(options.left, options.right,
-      options.leftId, options.rightId);
+    this._setTable(options);
+    this._setTableId(options);
   }
 
-  setTable(left = '', right = '', leftId = null, rightId = null) {
-    this._left = left;
-    this._leftId = leftId || left + '_id';
+  _setTable(value) {
+    this._left = value.left;
+    this._right = value.right;
+    this._table = 'link_' + this._left + '_' + this._right;
 
-    this._right = right;
-    this._rightId = rightId || right + '_id';
-
-    this._table = 'link_' + left + '_' + right;
     return this;
   }
 
-  _createValue(data) {
-    if (typeof data[this._left] === 'undefined') {
-      return data;
-    }
+  _setTableId(value) {
+    this._leftId = value.leftId;
+    this._rightId = value.rightId;
 
-    if (typeof data[this._right] === 'undefined') {
-      return data;
-    }
-
-    return {
-      [this._leftId]: data[this._left][this._leftId],
-      [this._rightId]: data[this._right][this._rightId]
-    };
+    return this;
   }
 }

@@ -1,14 +1,14 @@
 import DatabaseWorker from '../worker/database';
-
-const parts = {
-  delete: 'DELETE FROM ??',
-  update: 'UPDATE ?? SET deleted = ?',
-  where: 'WHERE ?? = ?'
-};
+const query = 'DELETE FROM ?? WHERE ?? = ?';
 
 export default class ObjectDeleter extends DatabaseWorker {
   act(box, data, callback) {
-    const [query, values] = this._buildQuery(box, data);
+    const object = this.filter(box, data, 'act');
+    const values = [
+      this._table,
+      this._tableId,
+      object[this._tableId]
+    ];
 
     this
       .getPool(this._table)
@@ -24,27 +24,6 @@ export default class ObjectDeleter extends DatabaseWorker {
 
   decide(box, data) {
     const object = this.filter(box, data, 'decide');
-    return typeof object[this._id] !== 'undefined';
-  }
-
-  _buildQuery(box, data) {
-    const object = this.filter(box, data, 'act');
-
-    let query = '';
-    const values = [this._table];
-
-    if (typeof object.undelete === 'undefined') {
-      query += parts.delete;
-    } else {
-      query += parts.update;
-      values.push(object.undelete === '1' ? null : Date.now());
-    }
-
-    query += ' ' + parts.where;
-
-    values.push(this._id);
-    values.push(object[this._id]);
-
-    return [query, values];
+    return typeof object[this._tableId] !== 'undefined';
   }
 }

@@ -4,12 +4,11 @@ const query = 'UPDATE ?? SET ? WHERE ?? = ?';
 export default class ObjectUpdater extends DatabaseWorker {
   act(box, data, callback) {
     const object = this.filter(box, data, 'act');
-
     const values = [
       this._table,
-      object,
-      this._id,
-      object[this._id]
+      this._createUpdate(object),
+      this._tableId,
+      object[this._tableId]
     ];
 
     this
@@ -20,7 +19,7 @@ export default class ObjectUpdater extends DatabaseWorker {
             throw queryError;
           }
 
-          const merged = this.merge(box, data, Object.assign({}, values[1]));
+          const merged = this.merge(box, data, values[1]);
 
           if (typeof merged !== 'undefined') {
             data = merged;
@@ -35,6 +34,6 @@ export default class ObjectUpdater extends DatabaseWorker {
 
   decide(box, data) {
     const object = this.filter(box, data, 'decide');
-    return typeof object[this._id] !== 'undefined';
+    return typeof object[this._tableId] !== 'undefined';
   }
 }
