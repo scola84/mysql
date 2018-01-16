@@ -38,7 +38,8 @@ export default class DatabaseWorker extends Worker {
   }
 
   from(from) {
-    return this._setTable(from);
+    this._setTable(from);
+    return this;
   }
 
   group(group) {
@@ -57,12 +58,17 @@ export default class DatabaseWorker extends Worker {
   }
 
   into(into) {
-    return this._setTable(into);
+    this._setTable(into);
+    this._setTableId(into);
+
+    return this;
   }
 
   replace(replace) {
     this._replace = true;
-    return this._setTable(replace);
+    this._setTable(replace);
+
+    return this;
   }
 
   select(select) {
@@ -76,7 +82,8 @@ export default class DatabaseWorker extends Worker {
   }
 
   update(update) {
-    return this._setTable(update);
+    this._setTable(update);
+    return this;
   }
 
   where(where) {
@@ -86,10 +93,9 @@ export default class DatabaseWorker extends Worker {
 
   _createInsert(object) {
     const value = [];
-    const isArray = Array.isArray(object);
-
-    object = isArray ? object : [object];
     let name = '';
+
+    object = Array.isArray(object) ? object : [object];
 
     for (let i = 0; i < object.length; i += 1) {
       value[i] = [];
@@ -100,7 +106,7 @@ export default class DatabaseWorker extends Worker {
       }
     }
 
-    return isArray ? value : value[0];
+    return value;
   }
 
   _createUpdate(object) {
@@ -117,11 +123,9 @@ export default class DatabaseWorker extends Worker {
 
   _setTable(value) {
     this._table = value.table;
-    return this;
   }
 
   _setTableId(value) {
     this._tableId = value.id;
-    return this;
   }
 }

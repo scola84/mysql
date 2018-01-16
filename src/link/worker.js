@@ -17,14 +17,10 @@ export default class LinkWorker extends DatabaseWorker {
     this._left = value.left;
     this._right = value.right;
     this._table = 'link_' + this._left + '_' + this._right;
-
-    return this;
   }
 
   _setTableId(value) {
     this._leftId = value.leftId;
     this._rightId = value.rightId;
-
-    return this;
   }
 }

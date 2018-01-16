@@ -5,7 +5,6 @@ import DatabaseWorker from './database';
 
 const parts = {
   wrap: {
-    any: 'ANY_VALUE(%s)',
     avg: 'AVG(%s)',
     bit_and: 'BIT_AND(%s)',
     bit_or: 'BIT_OR(%s)',
@@ -64,6 +63,75 @@ export default class DatabaseSelector extends DatabaseWorker {
   setNest(value = false) {
     this._nest = value;
     return this;
+  }
+
+  build(box, data) {
+    if (this._query === null) {
+      this._query = this.prepare();
+    }
+
+    const params = this.filter(box, data) || {};
+    const values = [];
+
+    let where = '';
+    let order = '';
+    let limit = '';
+
+    if (typeof params.where !== 'undefined') {
+      where = this._buildWhere(params, values);
+    }
+
+    if (typeof params.order !== 'undefined') {
+      order = this._buildOrder(params, values);
+    } else {
+      order = '1';
+    }
+
+    if (typeof params.count !== 'undefined') {
+      limit = this._buildLimit(params, values);
+    }
+
+    const query = format(
+      this._query,
+      where,
+      order,
+      limit
+    );
+
+    return {
+      sql: query,
+      nestTables: this._nest,
+      values
+    };
+  }
+
+  prepare() {
+    const group = [];
+    const join = [];
+    const select = [];
+
+    this._select.forEach((entry) => {
+      select.push(this._prepareSelect(entry));
+    });
+
+    this._join.forEach((entry, index) => {
+      join.push(this._prepareJoin(entry, index));
+    });
+
+    this._group.forEach((entry) => {
+      group.push(this._prepareGroup(entry));
+    });
+
+    return format(
+      parts.query,
+      select.length > 0 ? select.join(', ') : '*',
+      this._table,
+      join.length > 0 ? join.join(' ') : '',
+      '%s',
+      group.length > 0 ? format(parts.group, group.join(', ')) : '',
+      '%s',
+      '%s'
+    );
   }
 
   where(...where) {
@@ -149,47 +217,6 @@ export default class DatabaseSelector extends DatabaseWorker {
     return order.join(', ');
   }
 
-  _buildQuery(box, data) {
-    if (this._query === null) {
-      this._prepareQuery();
-    }
-
-    const params = this.filter(box, data) || {};
-    const values = [];
-
-    let where = '';
-    let order = '';
-    let limit = '';
-
-    if (typeof params.where !== 'undefined') {
-      where = this._buildWhere(params, values);
-    }
-
-    if (typeof params.order !== 'undefined') {
-      order = this._buildOrder(params, values);
-    } else {
-      order = '1';
-    }
-
-    if (typeof params.count !== 'undefined') {
-      limit = this._buildLimit(params, values);
-    }
-
-    const query = format(
-      this._query,
-      where,
-      order,
-      limit
-    );
-
-    const options = {
-      sql: query,
-      nestTables: this._nest
-    };
-
-    return [options, values];
-  }
-
   _buildWhere(params, values) {
     const where = Array.isArray(params.where) ?
       params.where : [params.where];
@@ -246,6 +273,13 @@ export default class DatabaseSelector extends DatabaseWorker {
     and.push(or.join(' OR '));
   }
 
+  _prepareGroup(entry) {
+    return [
+      entry.table || this._table,
+      entry.id
+    ].join('.');
+  }
+
   _prepareJoin(entry, index) {
     const id = entry.id ? entry.id : entry.left + '_id';
     const name = 't' + index;
@@ -258,43 +292,14 @@ export default class DatabaseSelector extends DatabaseWorker {
 
     return format(
       parts.join,
-      entry.right ? 'link_' : '',
-      entry.left,
-      entry.right ? '_' + entry.right : '',
+      entry.right ? 'link_' : entry.selector ? '(' : '',
+      entry.selector ? entry.selector.build().sql : entry.left,
+      entry.right ? '_' + entry.right : entry.selector ? ')' : '',
       name,
       left,
       id,
       name,
       id
-    );
-  }
-
-  _prepareQuery() {
-    const join = [];
-    const select = [];
-
-    this._select.forEach((entry) => {
-      select.push(this._prepareSelect(entry));
-    });
-
-    this._join.forEach((entry, index) => {
-      join.push(this._prepareJoin(entry, index));
-    });
-
-    const group = this._group.length > 0 ? format(
-      parts.group,
-      this._group.join(', ')
-    ) : '';
-
-    this._query = format(
-      parts.query,
-      select.length > 0 ? select.join(', ') : '*',
-      this._table,
-      join.length > 0 ? join.join(' ') : '',
-      '%s',
-      group,
-      '%s',
-      '%s'
     );
   }
 
