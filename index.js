@@ -1,23 +1,43 @@
-import DatabaseWorker from './src/worker/database';
-import LinkDeleter from './src/link/deleter';
-import LinkInserter from './src/link/inserter';
-import LinkReplacer from './src/link/replacer';
-import LinkUpdater from './src/link/updater';
-import ListSelector from './src/list/selector';
-import ObjectDeleter from './src/object/deleter';
-import ObjectInserter from './src/object/inserter';
-import ObjectSelector from './src/object/selector';
-import ObjectUpdater from './src/object/updater';
-
-export {
-  DatabaseWorker,
+import {
   LinkDeleter,
   LinkInserter,
   LinkReplacer,
-  LinkUpdater,
-  ListSelector,
+  LinkUpdater
+} from './src/link';
+
+import {
+  ListSelector
+} from './src/list';
+
+import {
   ObjectDeleter,
   ObjectInserter,
   ObjectSelector,
   ObjectUpdater
+} from './src/object';
+
+import {
+  DatabaseWorker
+} from './src/worker';
+
+export {
+  LinkDeleter,
+  LinkInserter,
+  LinkReplacer,
+  LinkUpdater
+};
+
+export {
+  ListSelector
+};
+
+export {
+  ObjectDeleter,
+  ObjectInserter,
+  ObjectSelector,
+  ObjectUpdater
+};
+
+export {
+  DatabaseWorker
 };
