@@ -110,17 +110,17 @@ export default class DatabaseSelector extends DatabaseWorker {
     const join = [];
     const select = [];
 
-    this._select.forEach((entry) => {
-      select.push(this._prepareSelect(entry));
-    });
+    for (let i = 0; i < this._select.length; i += 1) {
+      select.push(this._prepareSelect(this._select[i]));
+    }
 
-    this._join.forEach((entry, index) => {
-      join.push(this._prepareJoin(entry, index));
-    });
+    for (let i = 0; i < this._join.length; i += 1) {
+      join.push(this._prepareJoin(this._join[i], i));
+    }
 
-    this._group.forEach((entry) => {
-      group.push(this._prepareGroup(entry));
-    });
+    for (let i = 0; i < this._group.length; i += 1) {
+      group.push(this._prepareGroup(this._group[i]));
+    }
 
     return format(
       parts.query,
