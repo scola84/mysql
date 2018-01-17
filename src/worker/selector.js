@@ -47,14 +47,7 @@ export default class DatabaseSelector extends DatabaseWorker {
   constructor(options = {}) {
     super(options);
 
-    this._coalesce = [];
-    this._concat = [];
-    this._flat = false;
-    this._group = [];
-    this._join = [];
     this._nest = null;
-    this._query = null;
-    this._select = [];
     this._where = [];
 
     this.setNest(options.nest);
@@ -227,12 +220,14 @@ export default class DatabaseSelector extends DatabaseWorker {
     for (let i = 0; i < this._where.length; i += 1) {
       value = where[i];
 
-      if (typeof value === 'string') {
-        value = value.split(' ');
+      if (value === null || typeof value === 'undefined') {
+        continue;
+      }
 
-        for (let j = 0; j < value.length; j += 1) {
-          this._buildWhereAnd(i, and, value[j], values);
-        }
+      value = Array.isArray(value) ? value : String(value).split(' ');
+
+      for (let j = 0; j < value.length; j += 1) {
+        this._buildWhereAnd(i, and, value[j], values);
       }
     }
 

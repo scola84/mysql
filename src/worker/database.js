@@ -8,7 +8,12 @@ export default class DatabaseWorker extends Worker {
   constructor(options = {}) {
     super(options);
 
+    this._columns = null;
+    this._group = [];
+    this._join = [];
+    this._query = null;
     this._replace = false;
+    this._select = [];
     this._table = null;
     this._tableId = null;
 
