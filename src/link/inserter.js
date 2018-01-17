@@ -14,11 +14,19 @@ export default class LinkInserter extends LinkWorker {
       .getPool(this._table)
       .query(query, values, (error) => {
         if (error) {
-          this.fail(box, error);
+          this.fail(box, this._processError(error));
           return;
         }
 
         this.pass(box, data, callback);
       });
+  }
+
+  _processError(error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      error = new Error('409 Link already exists');
+    }
+
+    return error;
   }
 }
