@@ -1,5 +1,6 @@
 /*eslint no-useless-escape: 0 */
 
+import mysql from 'mysql';
 import { format } from 'util';
 import DatabaseWorker from './database';
 
@@ -96,6 +97,11 @@ export default class DatabaseSelector extends DatabaseWorker {
       nestTables: this._nest,
       values
     };
+  }
+
+  format(box, data) {
+    const query = this.build(box, data);
+    return mysql.format(query.sql, query.values);
   }
 
   prepare() {
@@ -288,7 +294,7 @@ export default class DatabaseSelector extends DatabaseWorker {
     return format(
       parts.join,
       entry.right ? 'link_' : entry.selector ? '(' : '',
-      entry.selector ? entry.selector.build().sql : entry.left,
+      entry.selector ? entry.selector.format() : entry.left,
       entry.right ? '_' + entry.right : entry.selector ? ')' : '',
       name,
       left,
