@@ -1,37 +1,15 @@
+import mysql from 'mysql';
 import sprintf from 'sprintf-js';
 import Database from './database';
 import parts from './parts';
 
 export default class Selector extends Database {
-  build(input = {}) {
-    if (this._query === null) {
-      this._prepare();
+  build(box, data) {
+    if (this._union.length > 0) {
+      return this._buildUnion(box, data);
     }
 
-    const select = this._query.select;
-    const from = this._query.from;
-
-    const values = [
-      ...select.values,
-      ...from.values
-    ];
-
-    let sql = 'SELECT';
-
-    sql += ' ' + select.sql.join(', ');
-    sql += ' FROM ' + from.sql;
-
-    sql += this._finishJoin(input, values);
-    sql += this._finishWhere(input, values);
-    sql += this._finishGroup(input, values);
-    sql += this._finishOrder(input, values);
-    sql += this._finishLimit(input, values);
-
-    return {
-      nestTables: this._nest,
-      sql,
-      values
-    };
+    return this._buildSimple(box, data);
   }
 
   merge(box, data, { input, result }) {
@@ -58,6 +36,65 @@ export default class Selector extends Database {
     };
   }
 
+  _buildSimple(box, data) {
+    if (this._query === null) {
+      this._prepare();
+    }
+
+    const input = this.filter(box, data);
+
+    const select = this._query.select;
+    const from = this._query.from;
+
+    const values = [
+      ...select.values,
+      ...from.values
+    ];
+
+    let sql = 'SELECT';
+
+    sql += ' ' + select.sql.join(', ');
+    sql += ' FROM ' + from.sql;
+
+    sql += this._finishJoin(box, data, input, values);
+    sql += this._finishWhere(box, data, input, values);
+    sql += this._finishGroup(box, data, input, values);
+    sql += this._finishOrder(box, data, input, values);
+    sql += this._finishLimit(box, data, input, values);
+
+    return {
+      input,
+      nestTables: this._nest,
+      sql,
+      values
+    };
+  }
+
+  _buildUnion(box, data) {
+    let sql = '';
+    let query = {};
+    const values = [];
+
+    for (let i = 0; i < this._union.length; i += 1) {
+      query = this._union[i].build(box, data);
+
+      sql += i > 0 ? ') UNION (' : '';
+      sql += query.sql;
+
+      for (let j = 0; j < query.values.length; j += 1) {
+        values[values.length] = query.values[j];
+      }
+    }
+
+    sql = '(' + sql + ')';
+
+    return {
+      nestTables: this._nest,
+      sql,
+      values
+    };
+  }
+
   _prepareSelect(select) {
     const query = {
       sql: [],
@@ -73,7 +110,11 @@ export default class Selector extends Database {
       value = '??';
       wrap = select[i].wrap || [];
 
-      query.values[i] = field.column;
+      if (field.column === '*') {
+        value = field.column;
+      } else {
+        query.values[i] = field.column;
+      }
 
       for (let j = wrap.length - 1; j >= 0; j -= 1) {
         value = sprintf.sprintf(
@@ -84,7 +125,7 @@ export default class Selector extends Database {
       }
 
       if (field.alias) {
-        value += ' AS ' + field.alias;
+        value += ' AS `' + field.alias + '`';
       }
 
       query.sql[i] = value;

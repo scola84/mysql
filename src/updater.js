@@ -1,10 +1,12 @@
 import Database from './database';
 
 export default class Updater extends Database {
-  build(input = {}) {
+  build(box, data) {
     if (this._query === null) {
       this._prepare();
     }
+
+    const input = this.filter(box, data);
 
     const update = this._query.update;
     const values = [...update.values];
@@ -12,20 +14,17 @@ export default class Updater extends Database {
     let sql = 'UPDATE';
 
     sql += ' ' + update.sql;
-    sql += this._finishSet(input, values);
-    sql += this._finishWhere(input, values);
-    sql += this._finishOrder(input, values);
-    sql += this._finishLimit(input, values);
+    sql += this._finishSet(box, data, input, values);
+    sql += this._finishWhere(box, data, input, values);
+    sql += this._finishOrder(box, data, input, values);
+    sql += this._finishLimit(box, data, input, values);
 
-    // console.log(input, sql, values);
-
-    return { sql, values };
+    return { input, sql, values };
   }
 
-  _finishSet(input, values) {
-    const set = input.set ?
-      this._prepareSet(this._set, this._query.set, input.set) :
-      this._query.set;
+  _finishSet(box, data, input, values) {
+    const set = input.set ? this._prepareSet(this._set, box, data,
+      this._query.set, input.set) : this._query.set;
 
     if (set.sql.length > 0) {
       for (let i = 0; i < set.values.length; i += 1) {
@@ -48,7 +47,7 @@ export default class Updater extends Database {
     };
   }
 
-  _prepareSet(set, query = {}, input = {}) {
+  _prepareSet(set, box, data, query = {}, input = {}) {
     query = {
       sql: '?',
       values: [{}]

@@ -22,6 +22,7 @@ export default class Database extends Worker {
     this._select = [];
     this._set = {};
     this._type = null;
+    this._union = [];
     this._update = {};
     this._query = null;
     this._where = [];
@@ -114,6 +115,11 @@ export default class Database extends Worker {
     return this;
   }
 
+  union(value) {
+    this._union.push(value);
+    return this;
+  }
+
   update(value) {
     this._update = value;
     return this;
@@ -125,14 +131,13 @@ export default class Database extends Worker {
   }
 
   act(box, data, callback) {
-    const input = this.filter(box, data);
-    const query = this.build(input);
+    const query = this.build(box, data);
 
     this
       .getPool(this._table)
       .query(query, (error, result) => {
         this._process(box, data, callback,
-          input, error, result);
+          query.input, error, result);
       });
   }
 
@@ -140,12 +145,12 @@ export default class Database extends Worker {
     throw new Error('Not implemented');
   }
 
-  format(input) {
-    const query = this.build(input);
+  format(box, data) {
+    const query = this.build(box, data);
     return mysql.format(query.sql, query.values);
   }
 
-  _finishGroup(input, values) {
+  _finishGroup(box, data, input, values) {
     const group = this._query.group;
 
     if (group.sql.length > 0) {
@@ -159,7 +164,7 @@ export default class Database extends Worker {
     return '';
   }
 
-  _finishJoin(input, values) {
+  _finishJoin(box, data, input, values) {
     const join = input.join ?
       this._prepareJoin(this._join, this._query.join, input.join) :
       this._query.join;
@@ -173,12 +178,12 @@ export default class Database extends Worker {
       string += ' ' + (field.type || 'LEFT') + ' JOIN ';
 
       if (field.table instanceof Database) {
-        string += '(' + field.table.format(input) + ')';
+        string += '(' + field.table.format(box, data) + ')';
       } else {
         string += field.table;
       }
 
-      string += field.alias ? ' AS ' + field.alias : '';
+      string += field.alias ? ' AS `' + field.alias + '`' : '';
       string += ' ON (' + join.sql[i] + ')';
     }
 
@@ -189,10 +194,9 @@ export default class Database extends Worker {
     return string;
   }
 
-  _finishLimit(input, values) {
-    const limit = input.limit ?
-      this._prepareLimit(this._limit, this._query.limit, input.limit) :
-      this._query.limit;
+  _finishLimit(box, data, input, values) {
+    const limit = input.limit ? this._prepareLimit(this._limit, box, data,
+      this._query.limit, input.limit) : this._query.limit;
 
     if (limit.sql.length > 0) {
       for (let i = 0; i < limit.values.length; i += 1) {
@@ -205,10 +209,9 @@ export default class Database extends Worker {
     return '';
   }
 
-  _finishOrder(input, values) {
-    const order = input.order ?
-      this._prepareBy(this._order, this._query.order, input.order) :
-      this._query.order;
+  _finishOrder(box, data, input, values) {
+    const order = input.order ? this._prepareBy(this._order, box, data,
+      this._query.order, input.order) : this._query.order;
 
     if (order.sql.length > 0) {
       for (let i = 0; i < order.values.length; i += 1) {
@@ -221,10 +224,9 @@ export default class Database extends Worker {
     return '';
   }
 
-  _finishWhere(input, values) {
-    const where = input.where ?
-      this._prepareWhere(this._where, this._query.where, input.where) :
-      this._query.where;
+  _finishWhere(box, data, input, values) {
+    const where = input.where ? this._prepareWhere(this._where, box, data,
+      this._query.where, input.where) : this._query.where;
 
     if (where.sql.length > 0) {
       for (let i = 0; i < where.values.length; i += 1) {
@@ -237,7 +239,7 @@ export default class Database extends Worker {
     return '';
   }
 
-  _prepareBy(order, query = {}, input = {}) {
+  _prepareBy(order, box, data, query = {}, input = {}) {
     query = {
       sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
@@ -266,7 +268,7 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareCompare(compare, query = {}, input = [], op = 'AND') {
+  _prepareCompare(compare, box, data, query = {}, input = [], op = 'AND') {
     query = {
       sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
@@ -314,7 +316,7 @@ export default class Database extends Worker {
             query.values[query.values.length] = field.column;
 
             if (field.value instanceof Database) {
-              string += '(' + field.value.format(input) + ')';
+              string += '(' + field.value.format(box, data) + ')';
             } else {
               string += '??';
               query.values[query.values.length] = field.value;
@@ -392,31 +394,31 @@ export default class Database extends Worker {
     return '?? LIKE ?';
   }
 
-  _prepareFrom(from) {
+  _prepareFrom(from, box, data) {
     const query = {
       sql: '',
       values: []
     };
 
     if (from.table instanceof Database) {
-      query.sql = '(' + from.table.format() + ')';
+      query.sql = '(' + from.table.format(box, data) + ')';
     } else {
       query.sql = '??';
       query.values[0] = from.table;
     }
 
     if (from.alias) {
-      query.sql += ' AS ' + from.alias;
+      query.sql += ' AS `' + from.alias + '`';
     }
 
     return query;
   }
 
-  _prepareJoin(join, query, input) {
-    return this._prepareCompare(join, query, input, 'OR');
+  _prepareJoin(join, box, data, query, input) {
+    return this._prepareCompare(join, box, data, query, input, 'OR');
   }
 
-  _prepareLimit(limit, query = {}, input = {}) {
+  _prepareLimit(limit, box, data, query = {}, input = {}) {
     query = {
       sql: query.sql || '',
       values: query.values ? query.values.slice() : []
@@ -449,8 +451,8 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareWhere(where, query = {}, input = []) {
-    return this._prepareCompare(where, query, input);
+  _prepareWhere(where, box, data, query = {}, input = []) {
+    return this._prepareCompare(where, box, data, query, input);
   }
 
   _process(box, data, callback, input, error, result) {

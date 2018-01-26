@@ -1,10 +1,12 @@
 import Database from './database';
 
 export default class Deleter extends Database {
-  build(input = {}) {
+  build(box, data) {
     if (this._query === null) {
       this._prepare();
     }
+
+    const input = this.filter(box, data);
 
     const del = this._query.delete;
     const from = this._query.from;
@@ -19,12 +21,12 @@ export default class Deleter extends Database {
     sql += del.sql.length ? ' ' + del.sql : '';
     sql += ' FROM ' + from.sql;
 
-    sql += this._finishJoin(input, values);
-    sql += this._finishWhere(input, values);
-    sql += this._finishOrder(input, values);
-    sql += this._finishLimit(input, values);
+    sql += this._finishJoin(box, data, input, values);
+    sql += this._finishWhere(box, data, input, values);
+    sql += this._finishOrder(box, data, input, values);
+    sql += this._finishLimit(box, data, input, values);
 
-    return { sql, values };
+    return { input, sql, values };
   }
 
   _prepare() {
