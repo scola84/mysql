@@ -1,12 +1,10 @@
 import Database from './database';
 
 export default class Inserter extends Database {
-  build(box, data) {
+  create(box, data) {
     if (this._query === null) {
       this._prepare();
     }
-
-    const input = this.filter(box, data);
 
     const into = this._query.into;
     const values = [...into.values];
@@ -14,14 +12,14 @@ export default class Inserter extends Database {
     let sql = this._replace ? 'REPLACE' : 'INSERT';
 
     sql += ' INTO ' + into.sql;
-    sql += this._finishInsert(box, data, input, values);
+    sql += this._finishInsert(box, data, values);
 
-    return { input, sql, values };
+    return { sql, values };
   }
 
-  _finishInsert(box, data, input, values) {
-    const insert = input.insert ? this._prepareInsert(this._insert, box, data,
-      this._query.insert, input.insert) : this._query.insert;
+  _finishInsert(box, data, values) {
+    const insert = this._prepareInsert(this._insert,
+      box, data, this._query.insert);
 
     if (insert.sql.length > 0) {
       for (let i = 0; i < insert.values.length; i += 1) {
@@ -42,7 +40,7 @@ export default class Inserter extends Database {
     };
   }
 
-  _prepareInsert(insert, box, data, query = {}, input = {}) {
+  _prepareInsert([insert, input = {}], box, data, query = {}) {
     query = {
       sql: '?',
       values: []
@@ -59,6 +57,14 @@ export default class Inserter extends Database {
     if (Array.isArray(insert.value) === true) {
       query.values[1] = insert.value;
       return query;
+    }
+
+    if (typeof input === 'function') {
+      if (typeof box === 'undefined') {
+        return query;
+      }
+
+      input = input(box, data);
     }
 
     if (Array.isArray(input) === true) {

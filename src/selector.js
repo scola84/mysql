@@ -1,24 +1,23 @@
-import mysql from 'mysql';
 import sprintf from 'sprintf-js';
 import Database from './database';
 import parts from './parts';
 
 export default class Selector extends Database {
-  build(box, data) {
+  create(box, data) {
     if (this._union.length > 0) {
-      return this._buildUnion(box, data);
+      return this._createUnion(box, data);
     }
 
-    return this._buildSimple(box, data);
+    return this._createSingle(box, data);
   }
 
-  merge(box, data, { input, result }) {
+  merge(box, data, { query, result }) {
     if (this._type === 'object') {
       result = result[0];
     }
 
     if (this._merge) {
-      return this._merge(box, data, { input, result });
+      return this._merge(box, data, { query, result });
     }
 
     return result;
@@ -36,12 +35,10 @@ export default class Selector extends Database {
     };
   }
 
-  _buildSimple(box, data) {
+  _createSingle(box, data) {
     if (this._query === null) {
       this._prepare();
     }
-
-    const input = this.filter(box, data);
 
     const select = this._query.select;
     const from = this._query.from;
@@ -56,27 +53,26 @@ export default class Selector extends Database {
     sql += ' ' + select.sql.join(', ');
     sql += ' FROM ' + from.sql;
 
-    sql += this._finishJoin(box, data, input, values);
-    sql += this._finishWhere(box, data, input, values);
-    sql += this._finishGroup(box, data, input, values);
-    sql += this._finishOrder(box, data, input, values);
-    sql += this._finishLimit(box, data, input, values);
+    sql += this._finishJoin(box, data, values);
+    sql += this._finishWhere(box, data, values);
+    sql += this._finishGroup(box, data, values);
+    sql += this._finishOrder(box, data, values);
+    sql += this._finishLimit(box, data, values);
 
     return {
-      input,
       nestTables: this._nest,
       sql,
       values
     };
   }
 
-  _buildUnion(box, data) {
+  _createUnion(box, data) {
     let sql = '';
     let query = {};
     const values = [];
 
     for (let i = 0; i < this._union.length; i += 1) {
-      query = this._union[i].build(box, data);
+      query = this._union[i].create(box, data);
 
       sql += i > 0 ? ') UNION (' : '';
       sql += query.sql;
@@ -110,7 +106,10 @@ export default class Selector extends Database {
       value = '??';
       wrap = select[i].wrap || [];
 
-      if (field.column === '*') {
+      if (typeof field.value !== 'undefined') {
+        value = '?';
+        query.values[i] = field.value;
+      } else if (field.column === '*') {
         value = field.column;
       } else {
         query.values[i] = field.column;

@@ -73,7 +73,7 @@ export default class Database extends Worker {
     return this;
   }
 
-  insert(value) {
+  insert(...value) {
     this._insert = value;
     return this;
   }
@@ -98,8 +98,8 @@ export default class Database extends Worker {
     return this;
   }
 
-  replace(value) {
-    this.insert(value);
+  replace(...value) {
+    this.insert(...value);
     this._replace = true;
 
     return this;
@@ -110,7 +110,7 @@ export default class Database extends Worker {
     return this;
   }
 
-  set(value) {
+  set(...value) {
     this._set = value;
     return this;
   }
@@ -131,26 +131,25 @@ export default class Database extends Worker {
   }
 
   act(box, data, callback) {
-    const query = this.build(box, data);
+    const query = this.create(box, data);
 
     this
       .getPool(this._table)
       .query(query, (error, result) => {
-        this._process(box, data, callback,
-          query.input, error, result);
+        this._process(box, data, callback, query, error, result);
       });
   }
 
-  build() {
+  create() {
     throw new Error('Not implemented');
   }
 
   format(box, data) {
-    const query = this.build(box, data);
+    const query = this.create(box, data);
     return mysql.format(query.sql, query.values);
   }
 
-  _finishGroup(box, data, input, values) {
+  _finishGroup(box, data, values) {
     const group = this._query.group;
 
     if (group.sql.length > 0) {
@@ -164,10 +163,9 @@ export default class Database extends Worker {
     return '';
   }
 
-  _finishJoin(box, data, input, values) {
-    const join = input.join ?
-      this._prepareJoin(this._join, this._query.join, input.join) :
-      this._query.join;
+  _finishJoin(box, data, values) {
+    const join = this._prepareJoin(this._join,
+      box, data, this._query.join);
 
     let field = null;
     let string = '';
@@ -194,9 +192,9 @@ export default class Database extends Worker {
     return string;
   }
 
-  _finishLimit(box, data, input, values) {
-    const limit = input.limit ? this._prepareLimit(this._limit, box, data,
-      this._query.limit, input.limit) : this._query.limit;
+  _finishLimit(box, data, values) {
+    const limit = this._prepareLimit(this._limit,
+      box, data, this._query.limit);
 
     if (limit.sql.length > 0) {
       for (let i = 0; i < limit.values.length; i += 1) {
@@ -209,9 +207,9 @@ export default class Database extends Worker {
     return '';
   }
 
-  _finishOrder(box, data, input, values) {
-    const order = input.order ? this._prepareBy(this._order, box, data,
-      this._query.order, input.order) : this._query.order;
+  _finishOrder(box, data, values) {
+    const order = this._prepareBy(this._order,
+      box, data, this._query.order);
 
     if (order.sql.length > 0) {
       for (let i = 0; i < order.values.length; i += 1) {
@@ -224,9 +222,9 @@ export default class Database extends Worker {
     return '';
   }
 
-  _finishWhere(box, data, input, values) {
-    const where = input.where ? this._prepareWhere(this._where, box, data,
-      this._query.where, input.where) : this._query.where;
+  _finishWhere(box, data, values) {
+    const where = this._prepareWhere(this._where,
+      box, data, this._query.where);
 
     if (where.sql.length > 0) {
       for (let i = 0; i < where.values.length; i += 1) {
@@ -239,42 +237,44 @@ export default class Database extends Worker {
     return '';
   }
 
-  _prepareBy(order, box, data, query = {}, input = {}) {
+  _prepareBy(order, box, data, query = {}) {
     query = {
       sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
     };
 
-    input = {
-      dir: input.dir || [],
-      column: input.column || []
-    };
+    let value = null;
+    let column = [];
+    let dir = [];
 
     for (let i = 0; i < order.length; i += 1) {
-      if (query.sql[i]) {
-        continue;
+      value = order[i];
+
+      if (typeof value === 'function') {
+        if (typeof box === 'undefined') {
+          continue;
+        }
+
+        value = value(box, data);
       }
 
-      query.sql[i] = parts.order[order[i].dir || 'asc'];
-      query.values[i] = order[i].column;
-    }
+      column = Array.isArray(value.column) ? value.column : [value.column];
+      dir = Array.isArray(value.dir) ? value.dir : [value.dir];
 
-    for (let i = 0; i < input.column.length; i += 1) {
-      query.sql[query.sql.length] = parts.order[input.dir[i]] ||
-        parts.order.asc;
-      query.values[query.values.length] = input.column[i];
+      for (let j = 0; j < column.length; j += 1) {
+        query.sql[j] = parts.order[dir[j] || 'asc'];
+        query.values[j] = column[j];
+      }
     }
 
     return query;
   }
 
-  _prepareCompare(compare, box, data, query = {}, input = [], op = 'AND') {
+  _prepareCompare(compare, box, data, query = {}, operator = 'AND') {
     query = {
       sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
     };
-
-    input = Array.isArray(input) ? input : [input];
 
     let field = null;
     let value = null;
@@ -287,35 +287,67 @@ export default class Database extends Worker {
 
       sql = [];
 
-      if (typeof input[i] !== 'undefined' && input[i] !== null) {
-        value = String(input[i]).split(' ');
+      let max = compare[i].length;
 
-        for (let k = 0; k < value.length; k += 1) {
+      if (typeof compare[i][max - 1] === 'function') {
+        if (typeof box === 'undefined') {
+          continue;
+        }
+
+        value = compare[i][max - 1](box, data);
+        max -= 1;
+
+        if (Array.isArray(value)) {
           let string = '';
 
-          for (let j = 0; j < compare[i].length; j += 1) {
+          for (let j = 0; j < max; j += 1) {
             field = compare[i][j];
 
-            string += j === 0 ? '' : ' ' + (field.op || op) + ' ';
+            string += j === 0 ?
+              '' : ' ' + (field.operator || operator) + ' ';
             string += this._prepareCompareField(field,
-              query.values, value[k]);
+              query.values, value[j]);
           }
 
           sql[sql.length] = string;
+        } else {
+          if (typeof value === 'undefined' || value === null) {
+            continue;
+          }
+
+          value = String(value).split(' ');
+
+          for (let k = 0; k < value.length; k += 1) {
+            let string = '';
+
+            for (let j = 0; j < max; j += 1) {
+              field = compare[i][j];
+
+              string += j === 0 ?
+                '' : ' ' + (field.operator || operator) + ' ';
+              string += this._prepareCompareField(field,
+                query.values, value[k]);
+            }
+
+            sql[sql.length] = string;
+          }
         }
       } else {
-        for (let j = 0; j < compare[i].length; j += 1) {
+        for (let j = 0; j < max; j += 1) {
           field = compare[i][j];
 
           if (typeof field.value !== 'undefined') {
-            let string = j === 0 ? '' : ' ' + (field.op || op) + ' ';
+            let string = j === 0 ?
+              '' : ' ' + (field.operator || operator) + ' ';
 
             string += '??';
-            string += ' ' + (field.op || '=') + ' ';
+            string += ' ' + (field.operator || '=') + ' ';
 
             query.values[query.values.length] = field.column;
 
-            if (field.value instanceof Database) {
+            if (field.value === 'NULL' || field.value === 'NOT NULL') {
+              string += field.value;
+            } else if (field.value instanceof Database) {
               string += '(' + field.value.format(box, data) + ')';
             } else {
               string += '??';
@@ -335,8 +367,8 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareCompareField(field, values, input) {
-    const interval = input.match(
+  _prepareCompareField(field, values, value) {
+    const interval = value.match(
       /([\[\(])([-+]?[0-9]*\.?[0-9]*);([-+]?[0-9]*\.?[0-9]*)([\)\]])/
     );
 
@@ -344,53 +376,42 @@ export default class Database extends Worker {
       return this._prepareCompareInterval(field, values, interval);
     }
 
-    const is = input.match(/^is-((not-)?null)$/);
-
-    if (is) {
-      return this._prepareCompareIs(field, values, is);
-    }
-
-    const like = input.match(/\*/);
+    const like = value.match(/\*/);
 
     if (like) {
-      return this._prepareCompareLike(field, values, input);
+      return this._prepareCompareLike(field, values, value);
     }
 
-    return this._prepareCompareIn(field, values, input);
+    return this._prepareCompareIn(field, values, value);
   }
 
-  _prepareCompareIn(field, values, input) {
+  _prepareCompareIn(field, values, value) {
     values[values.length] = field.column;
-    values[values.length] = input;
+    values[values.length] = value;
     return '?? IN (?)';
   }
 
-  _prepareCompareInterval(field, values, input) {
+  _prepareCompareInterval(field, values, value) {
     const intervals = [];
 
-    if (input[2]) {
+    if (value[2]) {
       values[values.length] = field.column;
-      values[values.length] = input[2];
-      intervals[intervals.length] = input[1] === '[' ? '?? >= ?' : '?? > ?';
+      values[values.length] = value[2];
+      intervals[intervals.length] = value[1] === '[' ? '?? >= ?' : '?? > ?';
     }
 
-    if (input[3]) {
+    if (value[3]) {
       values[values.length] = field.column;
-      values[values.length] = input[3];
-      intervals[intervals.length] = input[4] === ']' ? '?? <= ?' : '?? < ?';
+      values[values.length] = value[3];
+      intervals[intervals.length] = value[4] === ']' ? '?? <= ?' : '?? < ?';
     }
 
     return '(' + intervals.join(' AND ') + ')';
   }
 
-  _prepareCompareIs(field, values, input) {
+  _prepareCompareLike(field, values, value) {
     values[values.length] = field.column;
-    return input[0] === 'is-null' ? '?? IS NULL' : '?? IS NOT NULL';
-  }
-
-  _prepareCompareLike(field, values, input) {
-    values[values.length] = field.column;
-    values[values.length] = input.replace(/\*/, '%');
+    values[values.length] = value.replace(/\*/, '%');
     return '?? LIKE ?';
   }
 
@@ -414,30 +435,30 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareJoin(join, box, data, query, input) {
-    return this._prepareCompare(join, box, data, query, input, 'OR');
+  _prepareJoin(join, box, data, query) {
+    return this._prepareCompare(join, box, data, query, 'OR');
   }
 
-  _prepareLimit(limit, box, data, query = {}, input = {}) {
+  _prepareLimit(limit, box, data, query = {}) {
     query = {
       sql: query.sql || '',
       values: query.values ? query.values.slice() : []
     };
 
+    if (typeof box === 'undefined') {
+      return query;
+    }
+
+    if (typeof limit === 'function') {
+      limit = limit(box, data);
+    }
+
     if (typeof limit.count !== 'undefined') {
       query.values[0] = limit.count;
     }
 
-    if (typeof input.count !== 'undefined') {
-      query.values[0] = input.count;
-    }
-
     if (typeof limit.offset !== 'undefined') {
       query.values[1] = limit.offset;
-    }
-
-    if (typeof input.offset !== 'undefined') {
-      query.values[1] = input.offset;
     }
 
     if (query.values.length > 0) {
@@ -451,18 +472,20 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareWhere(where, box, data, query = {}, input = []) {
-    return this._prepareCompare(where, box, data, query, input);
+  _prepareWhere(where, box, data, query = {}) {
+    return this._prepareCompare(where, box, data, query);
   }
 
-  _process(box, data, callback, input, error, result) {
+  _process(box, data, callback, query, error, result) {
     try {
       if (error) {
         this._processError(error);
         return;
       }
 
-      data = this.merge(box, data, { result, input });
+      // only merge if result is defined
+
+      data = this.merge(box, data, { query, result });
 
       this.pass(box, data, callback);
     } catch (finalError) {
