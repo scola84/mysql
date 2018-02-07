@@ -40,7 +40,7 @@ export default class Inserter extends Database {
     };
   }
 
-  _prepareInsert([insert, input = {}], box, data, query = {}) {
+  _prepareInsert(insert, box, data, query = {}) {
     query = {
       sql: '?',
       values: []
@@ -59,33 +59,33 @@ export default class Inserter extends Database {
       return query;
     }
 
-    if (typeof input === 'function') {
+    let column = null;
+    let value = insert.value;
+
+    if (typeof value === 'function') {
       if (typeof box === 'undefined') {
         return query;
       }
 
-      input = input(box, data);
+      value = value(box, data);
     }
 
-    if (Array.isArray(input) === true) {
-      query.values[1] = input;
+    if (Array.isArray(value) === true) {
+      query.values[1] = value;
       return query;
     }
 
     query.values[1][0] = [];
 
-    let field = null;
-    let value = null;
-
     for (let i = 0; i < insert.column.length; i += 1) {
-      field = insert.column[i];
+      column = insert.column[i];
 
       if (typeof query.values[1][0][i] !== 'undefined') {
         continue;
       }
 
-      value = insert.value && insert.value[field] || input[field];
-      query.values[1][0][i] = value === '' ? null : value;
+      query.values[1][0][i] = value[column] === '' ?
+        null : value[column];
     }
 
     return query;

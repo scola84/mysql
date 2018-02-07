@@ -44,32 +44,32 @@ export default class Updater extends Database {
     };
   }
 
-  _prepareSet([set, input = {}], box, data, query = {}) {
+  _prepareSet(set, box, data, query = {}) {
     query = {
       sql: '?',
       values: [{}]
     };
 
-    if (typeof input === 'function') {
+    let column = null;
+    let value = set.value;
+
+    if (typeof value === 'function') {
       if (typeof box === 'undefined') {
         return query;
       }
 
-      input = input(box, data);
+      value = value(box, data);
     }
 
-    let field = null;
-    let value = null;
-
     for (let i = 0; i < set.column.length; i += 1) {
-      field = set.column[i];
+      column = set.column[i];
 
-      if (typeof query.values[0][field] !== 'undefined') {
+      if (typeof query.values[0][column] !== 'undefined') {
         continue;
       }
 
-      value = set.value && set.value[field] || input[field];
-      query.values[0][field] = value === '' ? null : value;
+      query.values[0][column] = value[column] === '' ?
+        null : value[column];
     }
 
     return query;

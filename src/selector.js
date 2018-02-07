@@ -1,6 +1,5 @@
 import sprintf from 'sprintf-js';
-import Database from './database';
-import parts from './parts';
+import Database, { parts } from './database';
 
 export default class Selector extends Database {
   create(box, data) {
@@ -12,10 +11,6 @@ export default class Selector extends Database {
   }
 
   merge(box, data, { query, result }) {
-    if (this._type === 'object') {
-      result = result[0];
-    }
-
     if (this._merge) {
       return this._merge(box, data, { query, result });
     }
