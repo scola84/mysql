@@ -486,7 +486,7 @@ export default class Database extends Worker {
 
   _prepareCompareLike(field, column, values, value) {
     values[values.length] = column;
-    values[values.length] = value.replace(/\*/, '%');
+    values[values.length] = value.replace(/\*/g, '%');
     return '?? LIKE ?';
   }
 
