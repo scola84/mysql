@@ -7,7 +7,7 @@ const pools = {};
 let poolOptions = {};
 
 export const parts = {
-  order: {
+  by: {
     asc: '?? ASC',
     ascsig: 'CAST(?? AS SIGNED) ASC',
     desc: '?? DESC',
@@ -43,6 +43,8 @@ export default class Database extends Worker {
     this._from = {};
     this._group = [];
     this._join = [];
+    this._insert = {};
+    this._into = {};
     this._limit = {};
     this._nest = null;
     this._order = [];
@@ -76,59 +78,90 @@ export default class Database extends Worker {
   }
 
   delete(value) {
-    this._delete = value;
+    Object.assign(this._delete, value);
     return this;
   }
 
   from(value) {
-    this._from = value;
+    Object.assign(this._from, value);
     return this;
   }
 
-  group(value) {
-    this._group.push(value);
+  group(value, index = this._group.length) {
+    if (typeof this._group[index] === 'undefined') {
+      this._group[index] = {};
+    }
+
+    if (typeof value === 'function') {
+      this._group[index] = value;
+    } else {
+      Object.assign(this._group[index], value);
+    }
+
     return this;
   }
 
   insert(value) {
-    this._insert = value;
+    Object.assign(this._insert, value);
     return this;
   }
 
   into(value) {
-    this._into = value;
+    Object.assign(this._into, value);
     return this;
   }
 
-  join(value) {
-    this._join.push(value);
+  join(value, index = this._join.length) {
+    if (typeof this._join[index] === 'undefined') {
+      this._join[index] = {};
+    }
+
+    Object.assign(this._join[index], value);
     return this;
   }
 
   limit(value) {
-    this._limit = value;
+    if (typeof value === 'function') {
+      this._limit = value;
+    } else {
+      Object.assign(this._limit, value);
+    }
+
     return this;
   }
 
-  order(value) {
-    this._order.push(value);
+  order(value, index = this._order.length) {
+    if (typeof this._order[index] === 'undefined') {
+      this._order[index] = {};
+    }
+
+    if (typeof value === 'function') {
+      this._order[index] = value;
+    } else {
+      Object.assign(this._order[index], value);
+    }
+
     return this;
   }
 
-  replace(value) {
-    this.insert(value);
+  replace(value, index) {
+    this.insert(value, index);
     this._replace = true;
 
     return this;
   }
 
-  select(value) {
-    this._select.push(value);
+  select(value, index = this._select.length) {
+    if (typeof this._select[index] === 'undefined') {
+      this._select[index] = {};
+    }
+
+    Object.assign(this._select[index], value);
     return this;
   }
 
   set(value) {
-    this._set = value;
+    Object.assign(this._set, value);
     return this;
   }
 
@@ -138,12 +171,16 @@ export default class Database extends Worker {
   }
 
   update(value) {
-    this._update = value;
+    Object.assign(this._update, value);
     return this;
   }
 
-  where(value) {
-    this._where.push(value);
+  where(value, index = this._where.length) {
+    if (typeof this._where[index] === 'undefined') {
+      this._where[index] = {};
+    }
+
+    Object.assign(this._where[index], value);
     return this;
   }
 
@@ -254,27 +291,27 @@ export default class Database extends Worker {
     return '';
   }
 
-  _prepareBy(order, box, data, query = {}) {
+  _prepareBy(by, box, data, query = {}) {
     query = {
       sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
     };
 
-    let sql = [];
-    let values = [];
-
     let column = null;
     let dir = null;
     let field = null;
 
-    for (let i = 0; i < order.length; i += 1) {
+    let sql = [];
+    let values = [];
+
+    for (let i = 0; i < by.length; i += 1) {
       if (query.sql[i]) {
         continue;
       }
 
+      field = by[i];
       sql = [];
       values = [];
-      field = order[i];
 
       if (typeof field === 'function') {
         if (typeof box === 'undefined') {
@@ -291,7 +328,7 @@ export default class Database extends Worker {
         field.dir : [field.dir];
 
       for (let j = 0; j < column.length; j += 1) {
-        sql[j] = parts.order[dir[j] || 'asc'];
+        sql[j] = parts.by[dir[j] || 'asc'];
         values[j] = column[j];
       }
 
