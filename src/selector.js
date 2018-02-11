@@ -104,10 +104,10 @@ export default class Selector extends Database {
       if (typeof field.value !== 'undefined') {
         value = '?';
         query.values[i] = field.value;
-      } else if (field.column === '*') {
-        value = field.column;
+      } else if (field.columns === '*') {
+        value = field.columns;
       } else {
-        query.values[i] = field.column;
+        query.values[i] = field.columns;
       }
 
       for (let j = wrap.length - 1; j >= 0; j -= 1) {

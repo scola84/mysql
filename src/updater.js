@@ -61,8 +61,8 @@ export default class Updater extends Database {
       value = value(box, data);
     }
 
-    for (let i = 0; i < set.column.length; i += 1) {
-      column = set.column[i];
+    for (let i = 0; i < set.columns.length; i += 1) {
+      column = set.columns[i];
 
       if (typeof query.values[0][column] !== 'undefined') {
         continue;

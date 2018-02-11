@@ -46,7 +46,7 @@ export default class Inserter extends Database {
       values: []
     };
 
-    query.values[0] = insert.column;
+    query.values[0] = insert.columns;
     query.values[1] = [];
 
     if (insert.value instanceof Database) {
@@ -77,8 +77,8 @@ export default class Inserter extends Database {
 
     query.values[1][0] = [];
 
-    for (let i = 0; i < insert.column.length; i += 1) {
-      column = insert.column[i];
+    for (let i = 0; i < insert.columns.length; i += 1) {
+      column = insert.columns[i];
 
       if (typeof query.values[1][0][i] !== 'undefined') {
         continue;

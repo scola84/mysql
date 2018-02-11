@@ -297,7 +297,7 @@ export default class Database extends Worker {
       values: query.values ? query.values.slice() : []
     };
 
-    let column = null;
+    let columns = null;
     let dir = null;
     let field = null;
 
@@ -321,15 +321,15 @@ export default class Database extends Worker {
         field = field(box, data);
       }
 
-      column = Array.isArray(field.column) ?
-        field.column : [field.column];
+      columns = Array.isArray(field.columns) ?
+        field.columns : [field.columns];
 
       dir = Array.isArray(field.dir) ?
         field.dir : [field.dir];
 
-      for (let j = 0; j < column.length; j += 1) {
+      for (let j = 0; j < columns.length; j += 1) {
         sql[j] = parts.by[dir[j] || 'asc'];
-        values[j] = column[j];
+        values[j] = columns[j];
       }
 
       if (sql.length) {
@@ -347,7 +347,7 @@ export default class Database extends Worker {
       values: query.values ? query.values.slice() : []
     };
 
-    let column = null;
+    let columns = null;
     let field = null;
     let sql = null;
     let value = null;
@@ -360,8 +360,8 @@ export default class Database extends Worker {
       sql = [];
       field = compare[i];
 
-      column = Array.isArray(field.column) ?
-        field.column : [field.column];
+      columns = Array.isArray(field.columns) ?
+        field.columns : [field.columns];
       value = field.value;
 
       if (value instanceof Database) {
@@ -381,10 +381,10 @@ export default class Database extends Worker {
       }
 
       if (Array.isArray(value)) {
-        sql = this._prepareCompareAsArray(field, column,
+        sql = this._prepareCompareAsArray(field, columns,
           query.values, value, operator);
       } else {
-        sql = this._prepareCompareAsString(field, column,
+        sql = this._prepareCompareAsString(field, columns,
           query.values, value, operator);
       }
 
@@ -396,18 +396,18 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareCompareAsArray(field, column, values, value, operator) {
+  _prepareCompareAsArray(field, columns, values, value, operator) {
     const sqlOr = [];
 
-    for (let j = 0; j < column.length; j += 1) {
-      sqlOr[sqlOr.length] = this._prepareCompareField(field, column[j],
+    for (let j = 0; j < columns.length; j += 1) {
+      sqlOr[sqlOr.length] = this._prepareCompareField(field, columns[j],
         values, value[j]);
     }
 
     return '(' + sqlOr.join(' ' + operator + ' ') + ')';
   }
 
-  _prepareCompareAsString(field, column, values, value, operator) {
+  _prepareCompareAsString(field, columns, values, value, operator) {
     if (typeof value === 'undefined' || value === null) {
       if (field.required !== false) {
         const error = new Error('500 Compare value undefined');
@@ -425,8 +425,8 @@ export default class Database extends Worker {
     for (let k = 0; k < value.length; k += 1) {
       sqlOr = [];
 
-      for (let j = 0; j < column.length; j += 1) {
-        sqlOr[sqlOr.length] = this._prepareCompareField(field, column[j],
+      for (let j = 0; j < columns.length; j += 1) {
+        sqlOr[sqlOr.length] = this._prepareCompareField(field, columns[j],
           values, value[k]);
       }
 
