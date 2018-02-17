@@ -68,6 +68,10 @@ export default class Updater extends Database {
         continue;
       }
 
+      if (typeof value[column] === 'undefined' && set.any === true) {
+        continue;
+      }
+
       query.values[0][column] = value[column] === '' ?
         null : value[column];
     }
