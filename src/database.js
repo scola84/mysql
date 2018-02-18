@@ -430,10 +430,13 @@ export default class Database extends Worker {
           values, value[k]);
       }
 
-      sqlAnd[sqlAnd.length] = sqlOr.join(' ' + operator + ' ');
+      sqlAnd[sqlAnd.length] = sqlOr.length > 1 ?
+        '(' + sqlOr.join(' ' + operator + ' ') + ')' :
+        sqlOr.join('');
     }
 
-    return sqlAnd.length > 1 ? '(' + sqlAnd.join(') AND (') + ')' :
+    return sqlAnd.length > 1 ?
+      '(' + sqlAnd.join(') AND (') + ')' :
       sqlAnd.join('');
   }
 
