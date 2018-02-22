@@ -23,10 +23,12 @@ export const parts = {
     concat_ws: 'CONCAT_WS("%2$s",%1$s)',
     count: 'COUNT(%1$s)',
     distinct: 'DISTINCT %1$s',
+    insert: 'INSERT(%1$s,%2$s,%3$s,%4$s)',
     max: 'MAX(%1$s)',
     min: 'MIN(%1$s)',
     std: 'STD(%1$s)',
     sum: 'SUM(%1$s)',
+    substring: 'SUBSTRING(%1$s,%2$s,%3$s)',
     var: 'VARIANCE(%1$s)'
   }
 };
