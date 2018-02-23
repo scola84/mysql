@@ -466,9 +466,9 @@ export default class Database extends Worker {
   }
 
   _prepareCompareFieldIn(field, column, values, value) {
-    values[values.length] = column;
+    values[values.length] = column.split(',');
     values[values.length] = value;
-    return '?? IN (?)';
+    return '(??) IN (?)';
   }
 
   _prepareCompareFieldInterval(field, column, values, value) {
