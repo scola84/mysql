@@ -187,6 +187,7 @@ export default class Database extends Worker {
   }
 
   act(box, data, callback) {
+    data = this.filter(box, data);
     const query = this.create(box, data);
 
     this
