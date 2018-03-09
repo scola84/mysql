@@ -202,8 +202,19 @@ export default class Database extends Worker {
   }
 
   format(box, data) {
-    const query = this.create(box, data);
+    return this.formatQuery(this.create(box, data));
+  }
+
+  formatQuery(query) {
     return mysql.format(query.sql, query.values);
+  }
+
+  operate(name, operator, value) {
+    return mysql.raw(`${mysql.escapeId(name)} ${operator} ${value}`);
+  }
+
+  raw(value) {
+    return mysql.raw(value);
   }
 
   _finishGroup(box, data, values) {
@@ -423,7 +434,9 @@ export default class Database extends Worker {
 
     const sqlAnd = [];
     let sqlOr = null;
-    value = String(value).match(/[^"\s]+|"[^"]+"/g);
+
+    value = typeof value === 'object' && value.toSqlString ?
+      ([value]) : String(value).match(/[^"\s]+|"[^"]+"/g);
 
     for (let k = 0; k < value.length; k += 1) {
       sqlOr = [];
@@ -444,6 +457,10 @@ export default class Database extends Worker {
   }
 
   _prepareCompareField(field, column, values, value) {
+    if (typeof value === 'object' && value.toSqlString) {
+      return this._prepareCompareFieldRaw(field, column, values, value);
+    }
+
     if (field.operator === 'IN') {
       return this._prepareCompareFieldIn(field, column, values, value);
     }
@@ -490,14 +507,8 @@ export default class Database extends Worker {
     return '(' + intervals.join(' AND ') + ')';
   }
 
-  _prepareCompareFieldLike(field, column, values, value) {
-    values[values.length] = column;
-    values[values.length] = value.replace(/\*/g, '%');
-    return '?? LIKE ?';
-  }
-
   _prepareCompareFieldIs(field, column, values, value) {
-    let string = '??';
+    let string = typeof column === 'string' ? '??' : '?';
     values[values.length] = column;
 
     if (field.operator === 'IS') {
@@ -509,6 +520,17 @@ export default class Database extends Worker {
     }
 
     return string;
+  }
+
+  _prepareCompareFieldLike(field, column, values, value) {
+    values[values.length] = column;
+    values[values.length] = value.replace(/\*/g, '%');
+    return '?? LIKE ?';
+  }
+
+  _prepareCompareFieldRaw(field, column, values, value) {
+    values[values.length] = value;
+    return '?';
   }
 
   _prepareFrom(from, box, data) {
