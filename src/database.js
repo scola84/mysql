@@ -414,8 +414,8 @@ export default class Database extends Worker {
     const sqlOr = [];
 
     for (let j = 0; j < columns.length; j += 1) {
-      sqlOr[sqlOr.length] = this._prepareCompareField(field, columns[j],
-        values, value[j]);
+      sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
+        this._prepareCompareField(field, columns[j], values, value[j]);
     }
 
     return '(' + sqlOr.join(' ' + operator + ' ') + ')';
@@ -442,8 +442,8 @@ export default class Database extends Worker {
       sqlOr = [];
 
       for (let j = 0; j < columns.length; j += 1) {
-        sqlOr[sqlOr.length] = this._prepareCompareField(field, columns[j],
-          values, value[k]);
+        sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
+          this._prepareCompareField(field, columns[j], values, value[k]);
       }
 
       sqlAnd[sqlAnd.length] = sqlOr.length > 1 ?
