@@ -62,6 +62,10 @@ export default class Selector extends Database {
   }
 
   _createUnion(box, data) {
+    if (this._query === null) {
+      this._prepare();
+    }
+
     let sql = '';
     let query = {};
     const values = [];
@@ -78,6 +82,9 @@ export default class Selector extends Database {
     }
 
     sql = '(' + sql + ')';
+
+    sql += this._finishOrder(box, data, values);
+    sql += this._finishLimit(box, data, values);
 
     return {
       nestTables: this._nest,
