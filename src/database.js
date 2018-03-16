@@ -363,6 +363,7 @@ export default class Database extends Worker {
 
     let columns = null;
     let field = null;
+    let operators = null;
     let sql = null;
     let value = null;
 
@@ -376,6 +377,10 @@ export default class Database extends Worker {
 
       columns = Array.isArray(field.columns) ?
         field.columns : [field.columns];
+
+      operators = Array.isArray(field.operator) ?
+        field.operator : [field.operator];
+
       value = field.value;
 
       if (value instanceof Database) {
@@ -395,10 +400,10 @@ export default class Database extends Worker {
       }
 
       if (Array.isArray(value)) {
-        sql = this._prepareCompareAsArray(field, columns,
+        sql = this._prepareCompareAsArray(field, columns, operators,
           query.values, value, operator);
       } else {
-        sql = this._prepareCompareAsString(field, columns,
+        sql = this._prepareCompareAsString(field, columns, operators,
           query.values, value, operator);
       }
 
@@ -410,18 +415,19 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareCompareAsArray(field, columns, values, value, operator) {
+  _prepareCompareAsArray(field, columns, operators, values, value, operator) {
     const sqlOr = [];
 
     for (let j = 0; j < columns.length; j += 1) {
       sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
-        this._prepareCompareField(field, columns[j], values, value[j]);
+        this._prepareCompareField(field, columns[j], operators[j],
+          values, value[j]);
     }
 
     return '(' + sqlOr.join(' ' + operator + ' ') + ')';
   }
 
-  _prepareCompareAsString(field, columns, values, value, operator) {
+  _prepareCompareAsString(field, columns, operators, values, value, operator) {
     if (typeof value === 'undefined' || value === null) {
       if (field.required !== false) {
         const error = new Error('500 Compare value undefined');
@@ -443,7 +449,8 @@ export default class Database extends Worker {
 
       for (let j = 0; j < columns.length; j += 1) {
         sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
-          this._prepareCompareField(field, columns[j], values, value[k]);
+          this._prepareCompareField(field, columns[j], operators[j],
+            values, value[k]);
       }
 
       sqlAnd[sqlAnd.length] = sqlOr.length > 1 ?
@@ -456,13 +463,15 @@ export default class Database extends Worker {
       sqlAnd.join('');
   }
 
-  _prepareCompareField(field, column, values, value) {
+  _prepareCompareField(field, column, operator, values, value) {
     if (typeof value === 'object' && value.toSqlString) {
-      return this._prepareCompareFieldRaw(field, column, values, value);
+      return this._prepareCompareFieldRaw(field, column, operator,
+        values, value);
     }
 
-    if (field.operator === 'IN') {
-      return this._prepareCompareFieldIn(field, column, values, value);
+    if (operator === 'IN') {
+      return this._prepareCompareFieldIn(field, column, operator,
+        values, value);
     }
 
     const interval = value.match(
@@ -470,17 +479,19 @@ export default class Database extends Worker {
     );
 
     if (interval) {
-      return this._prepareCompareFieldInterval(field, column,
+      return this._prepareCompareFieldInterval(field, column, operator,
         values, interval);
     }
 
     const like = value.match(/\*/);
 
     if (like) {
-      return this._prepareCompareFieldLike(field, column, values, value);
+      return this._prepareCompareFieldLike(field, column, operator,
+        values, value);
     }
 
-    return this._prepareCompareFieldIs(field, column, values, value);
+    return this._prepareCompareFieldIs(field, column, operator,
+      values, value);
   }
 
   _prepareCompareFieldIn(field, column, values, value) {
@@ -489,7 +500,7 @@ export default class Database extends Worker {
     return '(??) IN (?)';
   }
 
-  _prepareCompareFieldInterval(field, column, values, value) {
+  _prepareCompareFieldInterval(field, column, operator, values, value) {
     const intervals = [];
 
     if (value[2]) {
@@ -507,28 +518,29 @@ export default class Database extends Worker {
     return '(' + intervals.join(' AND ') + ')';
   }
 
-  _prepareCompareFieldIs(field, column, values, value) {
+  _prepareCompareFieldIs(field, column, operator, values, value) {
     let string = typeof column === 'string' ? '??' : '?';
     values[values.length] = column;
 
-    if (field.operator === 'IS') {
-      string += ' IS ' + value;
+    string += ' ' + (operator || '=') + ' ';
+
+    if (operator === 'IS') {
+      string += value;
     } else {
       values[values.length] = value;
-      string += ' = ';
       string += typeof field.value === 'function' ? '?' : '??';
     }
 
     return string;
   }
 
-  _prepareCompareFieldLike(field, column, values, value) {
+  _prepareCompareFieldLike(field, column, operator, values, value) {
     values[values.length] = column;
     values[values.length] = value.replace(/\*/g, '%');
     return '?? LIKE ?';
   }
 
-  _prepareCompareFieldRaw(field, column, values, value) {
+  _prepareCompareFieldRaw(field, column, operator, values, value) {
     values[values.length] = value;
     return '?';
   }
