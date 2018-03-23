@@ -239,6 +239,10 @@ export default class Database extends Worker {
     let string = '';
 
     for (let i = 0; i < this._join.length; i += 1) {
+      if (typeof join.sql[i] === 'undefined') {
+        continue;
+      }
+
       field = this._join[i];
 
       string += ' ' + (field.type || 'LEFT') + ' JOIN ';
@@ -294,12 +298,23 @@ export default class Database extends Worker {
     const where = this._prepareWhere(this._where,
       box, data, this._query.where);
 
-    if (where.sql.length > 0) {
+    let sql = '';
+
+    for (let i = 0; i < where.sql.length; i += 1) {
+      if (typeof where.sql[i] === 'undefined') {
+        continue;
+      }
+
+      sql += i === 0 ? ' WHERE ' : ' AND ';
+      sql += where.sql[i];
+    }
+
+    if (sql.length > 0) {
       for (let i = 0; i < where.values.length; i += 1) {
         values[values.length] = where.values[i];
       }
 
-      return ' WHERE ' + where.sql.join(' AND ');
+      return sql;
     }
 
     return '';
@@ -408,7 +423,7 @@ export default class Database extends Worker {
       }
 
       if (sql) {
-        query.sql[query.sql.length] = sql;
+        query.sql[i] = sql;
       }
     }
 
@@ -541,8 +556,9 @@ export default class Database extends Worker {
   }
 
   _prepareCompareFieldRaw(field, column, operator, values, value) {
+    values[values.length] = column;
     values[values.length] = value;
-    return '?';
+    return '?? = ?';
   }
 
   _prepareFrom(from, box, data) {
