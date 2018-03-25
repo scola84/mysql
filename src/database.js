@@ -85,11 +85,19 @@ export default class Database extends Worker {
   }
 
   from(value) {
+    if (this._union.length > 0) {
+      return this._passToUnion('from', value);
+    }
+
     Object.assign(this._from, value);
     return this;
   }
 
   group(value, index = this._group.length) {
+    if (this._union.length > 0) {
+      return this._passToUnion('group', value, index);
+    }
+
     if (typeof this._group[index] === 'undefined') {
       this._group[index] = {};
     }
@@ -114,6 +122,10 @@ export default class Database extends Worker {
   }
 
   join(value, index = this._join.length) {
+    if (this._union.length > 0) {
+      return this._passToUnion('join', value, index);
+    }
+
     if (typeof this._join[index] === 'undefined') {
       this._join[index] = {};
     }
@@ -154,6 +166,10 @@ export default class Database extends Worker {
   }
 
   select(value, index = this._select.length) {
+    if (this._union.length > 0) {
+      return this._passToUnion('select', value, index);
+    }
+
     if (typeof this._select[index] === 'undefined') {
       this._select[index] = {};
     }
@@ -178,6 +194,10 @@ export default class Database extends Worker {
   }
 
   where(value, index = this._where.length) {
+    if (this._union.length > 0) {
+      return this._passToUnion('where', value, index);
+    }
+
     if (typeof this._where[index] === 'undefined') {
       this._where[index] = {};
     }
@@ -318,6 +338,14 @@ export default class Database extends Worker {
     }
 
     return '';
+  }
+
+  _passToUnion(name, ...args) {
+    for (let i = 0; i < this._union.length; i += 1) {
+      this._union[i][name](...args);
+    }
+
+    return this;
   }
 
   _prepareBy(by, box, data, query = {}) {
