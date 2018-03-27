@@ -325,7 +325,7 @@ export default class Database extends Worker {
         continue;
       }
 
-      sql += i === 0 ? ' WHERE ' : ' AND ';
+      sql += sql.length === 0 ? ' WHERE ' : ' AND ';
       sql += where.sql[i];
     }
 
