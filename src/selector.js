@@ -35,19 +35,11 @@ export default class Selector extends Database {
       this._prepare();
     }
 
-    const select = this._query.select;
-    const from = this._query.from;
+    const values = [];
+    let sql = '';
 
-    const values = [
-      ...select.values,
-      ...from.values
-    ];
-
-    let sql = 'SELECT';
-
-    sql += ' ' + select.sql.join(', ');
-    sql += ' FROM ' + from.sql;
-
+    sql += this._finishSelect(box, data, values);
+    sql += this._finishFrom(box, data, values);
     sql += this._finishJoin(box, data, values);
     sql += this._finishWhere(box, data, values);
     sql += this._finishGroup(box, data, values);
@@ -59,6 +51,40 @@ export default class Selector extends Database {
       sql,
       values
     };
+  }
+
+  _finishSelect(box, data, values) {
+    const select = this._prepareSelect(this._select,
+      box, data, this._query.select);
+
+    for (let i = 0; i < select.values.length; i += 1) {
+      if (typeof select.values[i] === 'undefined') {
+        continue;
+      }
+
+      if (typeof select.values[i].value !== 'undefined') {
+        if (Array.isArray(select.values[i].value)) {
+          values.splice(values.length, 0, ...select.values[i].value);
+        } else {
+          values[values.length] = select.values[i].value;
+        }
+      } else {
+        values[values.length] = select.values[i];
+      }
+    }
+
+    return 'SELECT ' + select.sql.join(', ');
+  }
+
+  _finishFrom(box, data, values) {
+    const from = this._prepareFrom(this._from,
+      box, data, this._query.from);
+
+    for (let i = 0; i < from.values.length; i += 1) {
+      values[values.length] = from.values[i];
+    }
+
+    return ' FROM ' + from.sql;
   }
 
   _createUnion(box, data) {
@@ -93,43 +119,83 @@ export default class Selector extends Database {
     };
   }
 
-  _prepareSelect(select) {
-    const query = {
-      sql: [],
-      values: []
+  _prepareSelect(select, box, data, query = {}) {
+    query = {
+      sql: query.sql ? query.sql.slice() : [],
+      values: query.values ? query.values.slice() : []
     };
 
     let field = null;
+    let sql = null;
+    let placeholder = null;
     let value = null;
     let wrap = null;
 
     for (let i = 0; i < select.length; i += 1) {
+      if (query.sql[i]) {
+        continue;
+      }
+
       field = select[i];
-      value = '??';
+      sql = '';
+      placeholder = '??';
+      value = null;
       wrap = select[i].wrap || [];
 
+      if (field.variable) {
+        sql = '@' + field.variable + ' := ';
+      }
+
+      if (typeof wrap === 'function') {
+        if (typeof box === 'undefined') {
+          continue;
+        }
+
+        wrap = wrap(box, data);
+      }
+
       if (typeof field.value !== 'undefined') {
-        value = '?';
-        query.values[i] = field.value;
+        value = field.value;
+
+        if (typeof value === 'function') {
+          if (typeof box === 'undefined') {
+            continue;
+          }
+
+          value = value(box, data);
+        }
+
+        if (value instanceof Database) {
+          if (typeof box !== 'undefined') {
+            query.sql[i] = sql + '(' + value.format(box, data) + ')';
+          }
+
+          continue;
+        }
+
+        placeholder = '?';
+        query.values[i] = { value };
       } else if (field.columns === '*') {
-        value = field.columns;
+        placeholder = '*';
       } else {
         query.values[i] = field.columns;
       }
 
       for (let j = wrap.length - 1; j >= 0; j -= 1) {
-        value = sprintf.sprintf(
+        placeholder = sprintf.sprintf(
           parts.wrap[wrap[j]],
-          value,
+          placeholder,
           ...(field[wrap[j]] || [])
         );
       }
 
+      sql = sql + placeholder;
+
       if (field.alias) {
-        value += ' AS `' + field.alias + '`';
+        sql += ' AS `' + field.alias + '`';
       }
 
-      query.sql[i] = value;
+      query.sql[i] = sql;
     }
 
     return query;

@@ -6,12 +6,10 @@ export default class Inserter extends Database {
       this._prepare();
     }
 
-    const into = this._query.into;
-    const values = [...into.values];
-
+    const values = [];
     let sql = this._replace ? 'REPLACE' : 'INSERT';
 
-    sql += ' INTO ' + into.sql;
+    sql += this._finishInto(box, data, values);
     sql += this._finishInsert(box, data, values);
 
     return { sql, values };
@@ -26,11 +24,20 @@ export default class Inserter extends Database {
         values[values.length] = insert.values[i];
       }
 
-      return (insert.values[1].length > 0 ? ' VALUES ' : '') +
-        insert.sql;
+      return ' ' + insert.sql;
     }
 
     return '';
+  }
+
+  _finishInto(box, data, values) {
+    const into = this._prepareInto(this._into, box, data);
+
+    for (let i = 0; i < into.values.length; i += 1) {
+      values[values.length] = into.values[i];
+    }
+
+    return ' INTO ' + into.sql;
   }
 
   _prepare() {
@@ -40,9 +47,9 @@ export default class Inserter extends Database {
     };
   }
 
-  _prepareInsert(insert, box, data, query = {}) {
-    query = {
-      sql: '?',
+  _prepareInsert(insert, box, data) {
+    const query = {
+      sql: '(??) VALUES ?',
       values: []
     };
 
@@ -50,7 +57,7 @@ export default class Inserter extends Database {
     query.values[1] = [];
 
     if (insert.value instanceof Database) {
-      query.sql = ' ' + insert.value.format(box, data);
+      query.sql = insert.value.format(box, data);
       return query;
     }
 
@@ -91,10 +98,25 @@ export default class Inserter extends Database {
     return query;
   }
 
-  _prepareInto(into) {
-    return {
-      sql: '?? (??)',
-      values: [into.table]
+  _prepareInto(into, box, data) {
+    const query = {
+      sql: '',
+      values: []
     };
+
+    let table = into.table;
+
+    if (typeof table === 'function') {
+      if (typeof box === 'undefined') {
+        return query;
+      }
+
+      table = table(box, data);
+    }
+
+    query.sql = '??';
+    query.values[0] = table;
+
+    return query;
   }
 }

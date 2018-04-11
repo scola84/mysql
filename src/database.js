@@ -23,9 +23,12 @@ export const parts = {
     concat_ws: 'CONCAT_WS("%2$s",%1$s)',
     count: 'COUNT(%1$s)',
     distinct: 'DISTINCT %1$s',
+    if: 'IF(%1$s,%2$s,%3$s)',
     insert: 'INSERT(%1$s,%2$s,%3$s,%4$s)',
     max: 'MAX(%1$s)',
     min: 'MIN(%1$s)',
+    round_date: 'UNIX_TIMESTAMP(FROM_UNIXTIME((?? / 1000) + ??, %1$s)) * 1000',
+    round_time: 'FLOOR(?? / (%1$s * 1000)) * (%1$s * 1000)',
     std: 'STD(%1$s)',
     sum: 'SUM(%1$s)',
     substring: 'SUBSTRING(%1$s,%2$s,%3$s)',
@@ -595,11 +598,21 @@ export default class Database extends Worker {
       values: []
     };
 
-    if (from.table instanceof Database) {
-      query.sql = '(' + from.table.format(box, data) + ')';
+    let table = from.table;
+
+    if (typeof table === 'function') {
+      if (typeof box === 'undefined') {
+        return query;
+      }
+
+      table = table(box, data);
+    }
+
+    if (table instanceof Database) {
+      query.sql = '(' + table.format(box, data) + ')';
     } else {
       query.sql = '??';
-      query.values[0] = from.table;
+      query.values[0] = table;
     }
 
     if (from.alias) {
