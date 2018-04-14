@@ -98,7 +98,7 @@ export default class Database extends Worker {
 
   group(value, index = this._group.length) {
     if (this._union.length > 0) {
-      return this._passToUnion('group', value, index);
+      return this._passToUnion('group', value);
     }
 
     if (typeof this._group[index] === 'undefined') {
@@ -126,7 +126,7 @@ export default class Database extends Worker {
 
   join(value, index = this._join.length) {
     if (this._union.length > 0) {
-      return this._passToUnion('join', value, index);
+      return this._passToUnion('join', value);
     }
 
     if (typeof this._join[index] === 'undefined') {
@@ -170,7 +170,7 @@ export default class Database extends Worker {
 
   select(value, index = this._select.length) {
     if (this._union.length > 0) {
-      return this._passToUnion('select', value, index);
+      return this._passToUnion('select', value);
     }
 
     if (typeof this._select[index] === 'undefined') {
@@ -198,7 +198,7 @@ export default class Database extends Worker {
 
   where(value, index = this._where.length) {
     if (this._union.length > 0) {
-      return this._passToUnion('where', value, index);
+      return this._passToUnion('where', value);
     }
 
     if (typeof this._where[index] === 'undefined') {
