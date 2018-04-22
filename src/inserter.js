@@ -105,6 +105,7 @@ export default class Inserter extends Database {
     };
 
     let table = into.table;
+    let shard = into.shard;
 
     if (typeof table === 'function') {
       if (typeof box === 'undefined') {
@@ -112,6 +113,15 @@ export default class Inserter extends Database {
       }
 
       table = table(box, data);
+    }
+
+    if (typeof shard !== 'undefined') {
+      if (typeof box === 'undefined') {
+        return query;
+      }
+
+      shard = typeof shard === 'function' ? shard(box, data) : shard;
+      table = this._formatTable(box, data, table, shard);
     }
 
     query.sql = '??';

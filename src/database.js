@@ -2,6 +2,7 @@
 
 import { Worker } from '@scola/worker';
 import mysql from 'mysql';
+import sprintf from 'sprintf-js';
 
 const pools = {};
 let poolOptions = {};
@@ -45,6 +46,7 @@ export default class Database extends Worker {
     super(options);
 
     this._delete = {};
+    this._domain = null;
     this._from = {};
     this._group = [];
     this._join = [];
@@ -56,6 +58,7 @@ export default class Database extends Worker {
     this._replace = null;
     this._select = [];
     this._set = {};
+    this._shard = null;
     this._union = [];
     this._update = {};
     this._query = null;
@@ -64,17 +67,27 @@ export default class Database extends Worker {
     this.setNest(options.nest);
   }
 
-  getPool(name = 'default') {
-    if (!pools[name]) {
-      pools[name] = mysql
-        .createPool(poolOptions[name] || poolOptions.default);
+  getPool(box, data) {
+    let name = this._host ? this._host.name : 'default';
+
+    if (typeof name === 'function') {
+      name = name(box, data);
     }
 
-    return {
-      query(string, values, callback) {
-        pools[name].query(string, values, callback);
-      }
-    };
+    const options = poolOptions[name];
+    const shard = this._host && this._host.shard ?
+      this._host.shard(box, data) : null;
+
+    const [host, database] = this.formatShard(name, shard);
+
+    if (typeof pools[host] === 'undefined') {
+      pools[host] = mysql.createPool(Object.assign({}, options, {
+        database,
+        host
+      }));
+    }
+
+    return pools[host];
   }
 
   setNest(value = false) {
@@ -209,12 +222,27 @@ export default class Database extends Worker {
     return this;
   }
 
+  host(value) {
+    this._host = value;
+    return this;
+  }
+
+  domain(value) {
+    this._domain = value;
+    return this;
+  }
+
+  shard(value) {
+    this._shard = value;
+    return this;
+  }
+
   act(box, data, callback) {
     data = this.filter(box, data);
     const query = this.create(box, data);
 
     this
-      .getPool(this._table)
+      .getPool(box, data)
       .query(query, (error, result) => {
         this._process(box, data, callback, query, error, result);
       });
@@ -230,6 +258,20 @@ export default class Database extends Worker {
 
   formatQuery(query) {
     return mysql.format(query.sql, query.values);
+  }
+
+  formatShard(name, shard = null) {
+    const options = poolOptions[name];
+
+    let database = options.database;
+    let host = options.host;
+
+    if (shard !== null && typeof options.shards !== 'undefined') {
+      database = null;
+      host = this._formatHost(host, options.shards, shard);
+    }
+
+    return [host, database];
   }
 
   operate(name, operator, value) {
@@ -259,7 +301,9 @@ export default class Database extends Worker {
       box, data, this._query.join);
 
     let field = null;
+    let shard = null;
     let string = '';
+    let table = null;
 
     for (let i = 0; i < this._join.length; i += 1) {
       if (typeof join.sql[i] === 'undefined') {
@@ -267,13 +311,19 @@ export default class Database extends Worker {
       }
 
       field = this._join[i];
+      table = field.table;
+      shard = field.shard;
 
       string += ' ' + (field.type || 'LEFT') + ' JOIN ';
 
-      if (field.table instanceof Database) {
+      if (table instanceof Database) {
         string += '(' + field.table.format(box, data) + ')';
       } else {
-        string += field.table;
+        if (typeof shard !== 'undefined') {
+          shard = typeof shard === 'function' ? shard(box, data) : shard;
+        }
+
+        string += this._formatTable(box, data, table, shard, true);
       }
 
       string += field.alias ? ' AS `' + field.alias + '`' : '';
@@ -341,6 +391,27 @@ export default class Database extends Worker {
     }
 
     return '';
+  }
+
+  _formatHost(host, shards, shard) {
+    return sprintf.sprintf(host, Math.floor(shard / shards));
+  }
+
+  _formatTable(box, data, table, shard = null, quote = false) {
+    let name = this._host ? this._host.name : 'default';
+
+    if (typeof name === 'function') {
+      name = name(box, data);
+    }
+
+    const database = shard === null ?
+      null : sprintf.sprintf(poolOptions[name].database, shard);
+
+    if (database === null) {
+      return quote ? `\`${table}\`` : table;
+    }
+
+    return quote ? `\`${database}.${table}\`` : `${database}.${table}`;
   }
 
   _passToUnion(name, ...args) {
@@ -599,6 +670,7 @@ export default class Database extends Worker {
     };
 
     let table = from.table;
+    let shard = from.shard;
 
     if (typeof table === 'function') {
       if (typeof box === 'undefined') {
@@ -611,6 +683,15 @@ export default class Database extends Worker {
     if (table instanceof Database) {
       query.sql = '(' + table.format(box, data) + ')';
     } else {
+      if (typeof shard !== 'undefined') {
+        if (typeof box === 'undefined') {
+          return query;
+        }
+
+        shard = typeof shard === 'function' ? shard(box, data) : shard;
+        table = this._formatTable(box, data, table, shard);
+      }
+
       query.sql = '??';
       query.values[0] = table;
     }
