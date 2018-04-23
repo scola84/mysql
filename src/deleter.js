@@ -6,25 +6,35 @@ export default class Deleter extends Database {
       this._prepare();
     }
 
-    const del = this._query.delete;
-    const from = this._query.from;
-
-    const values = [
-      ...del.values,
-      ...from.values
-    ];
-
+    const values = [];
     let sql = 'DELETE';
 
-    sql += del.sql.length ? ' ' + del.sql : '';
-    sql += ' FROM ' + from.sql;
-
+    sql += this._finishDelete(box, data, values);
+    sql += this._finishFrom(box, data, values);
     sql += this._finishJoin(box, data, values);
     sql += this._finishWhere(box, data, values);
     sql += this._finishOrder(box, data, values);
     sql += this._finishLimit(box, data, values);
 
     return { sql, values };
+  }
+
+  _finishFrom(box, data, values) {
+    const from = this._prepareFrom(this._from,
+      box, data, this._query.from);
+
+    for (let i = 0; i < from.values.length; i += 1) {
+      values[values.length] = from.values[i];
+    }
+
+    return ' FROM ' + from.sql;
+  }
+
+  _finishDelete(box, data, values) {
+    const head = this._prepareHead(this._delete, box, data,
+      this._query.delete);
+
+    return this._finishHead(head, values);
   }
 
   _prepare() {
@@ -38,10 +48,7 @@ export default class Deleter extends Database {
     };
   }
 
-  _prepareDelete(del) {
-    return {
-      sql: del.table ? '??' : '',
-      values: del.table ? [del.table] : []
-    };
+  _prepareDelete(head) {
+    return this._prepareHead(head);
   }
 }

@@ -6,12 +6,10 @@ export default class Updater extends Database {
       this._prepare();
     }
 
-    const update = this._query.update;
-    const values = [...update.values];
-
+    const values = [];
     let sql = 'UPDATE';
 
-    sql += ' ' + update.sql;
+    sql += this._finishUpdate(box, data, values);
     sql += this._finishSet(box, data, values);
     sql += this._finishWhere(box, data, values);
     sql += this._finishOrder(box, data, values);
@@ -32,6 +30,13 @@ export default class Updater extends Database {
     }
 
     return '';
+  }
+
+  _finishUpdate(box, data, values) {
+    const head = this._prepareHead(this._update, box, data,
+      this._query.update);
+
+    return this._finishHead(head, values);
   }
 
   _prepare() {
@@ -79,10 +84,7 @@ export default class Updater extends Database {
     return query;
   }
 
-  _prepareUpdate(update) {
-    return {
-      sql: '??',
-      values: [update.table]
-    };
+  _prepareUpdate(head) {
+    return this._prepareHead(head);
   }
 }

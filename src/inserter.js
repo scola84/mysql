@@ -31,13 +31,10 @@ export default class Inserter extends Database {
   }
 
   _finishInto(box, data, values) {
-    const into = this._prepareInto(this._into, box, data);
+    const head = this._prepareHead(this._into, box, data,
+      this._query.into);
 
-    for (let i = 0; i < into.values.length; i += 1) {
-      values[values.length] = into.values[i];
-    }
-
-    return ' INTO ' + into.sql;
+    return ' INTO' + this._finishHead(head, values);
   }
 
   _prepare() {
@@ -98,35 +95,7 @@ export default class Inserter extends Database {
     return query;
   }
 
-  _prepareInto(into, box, data) {
-    const query = {
-      sql: '',
-      values: []
-    };
-
-    let table = into.table;
-    let shard = into.shard;
-
-    if (typeof table === 'function') {
-      if (typeof box === 'undefined') {
-        return query;
-      }
-
-      table = table(box, data);
-    }
-
-    if (typeof shard !== 'undefined') {
-      if (typeof box === 'undefined') {
-        return query;
-      }
-
-      shard = typeof shard === 'function' ? shard(box, data) : shard;
-      table = this._formatTable(box, data, table, shard);
-    }
-
-    query.sql = '??';
-    query.values[0] = table;
-
-    return query;
+  _prepareInto(head) {
+    return this._prepareHead(head);
   }
 }
