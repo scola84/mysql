@@ -723,7 +723,6 @@ export default class Database extends Worker {
     };
 
     if (query.sql.length > 0) {
-      console.log('returing');
       return query;
     }
 
