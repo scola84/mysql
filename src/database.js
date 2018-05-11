@@ -110,10 +110,13 @@ export default class Database extends Worker {
     return this;
   }
 
-  group(value, index = this._group.length) {
+  group(value, index) {
     if (this._union.length > 0) {
-      return this._passToUnion('group', value);
+      return this._passToUnion('group', value, index);
     }
+
+    index = typeof index === 'undefined' ?
+      this._group.length : index;
 
     if (typeof this._group[index] === 'undefined') {
       this._group[index] = {};
@@ -138,10 +141,13 @@ export default class Database extends Worker {
     return this;
   }
 
-  join(value, index = this._join.length) {
+  join(value, index) {
     if (this._union.length > 0) {
-      return this._passToUnion('join', value);
+      return this._passToUnion('join', value, index);
     }
+
+    index = typeof index === 'undefined' ?
+      this._join.length : index;
 
     if (typeof this._join[index] === 'undefined') {
       this._join[index] = {};
@@ -161,7 +167,10 @@ export default class Database extends Worker {
     return this;
   }
 
-  order(value, index = this._order.length) {
+  order(value, index) {
+    index = typeof index === 'undefined' ?
+      this._order.length : index;
+
     if (typeof this._order[index] === 'undefined') {
       this._order[index] = {};
     }
@@ -182,10 +191,13 @@ export default class Database extends Worker {
     return this;
   }
 
-  select(value, index = this._select.length) {
+  select(value, index) {
     if (this._union.length > 0) {
-      return this._passToUnion('select', value);
+      return this._passToUnion('select', value, index);
     }
+
+    index = typeof index === 'undefined' ?
+      this._select.length : index;
 
     if (typeof this._select[index] === 'undefined') {
       this._select[index] = {};
@@ -210,10 +222,13 @@ export default class Database extends Worker {
     return this;
   }
 
-  where(value, index = this._where.length) {
+  where(value, index) {
     if (this._union.length > 0) {
-      return this._passToUnion('where', value);
+      return this._passToUnion('where', value, index);
     }
+
+    index = typeof index === 'undefined' ?
+      this._where.length : index;
 
     if (typeof this._where[index] === 'undefined') {
       this._where[index] = {};
