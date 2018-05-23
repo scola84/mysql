@@ -574,7 +574,7 @@ export default class Database extends Worker {
   }
 
   _prepareCompareAsString(field, columns, operators, values, value, operator) {
-    if (typeof value === 'undefined' || value === null) {
+    if (typeof value === 'undefined' || value === null || value === '') {
       if (field.required !== false) {
         const error = new Error('500 Compare value undefined');
         error.field = field;
