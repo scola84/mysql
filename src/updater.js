@@ -77,8 +77,7 @@ export default class Updater extends Database {
         continue;
       }
 
-      query.values[0][column] = value[column] === '' ?
-        null : value[column];
+      query.values[0][column] = value[column];
     }
 
     return query;

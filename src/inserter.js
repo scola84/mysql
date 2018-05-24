@@ -88,8 +88,7 @@ export default class Inserter extends Database {
         continue;
       }
 
-      query.values[1][0][i] = value[column] === '' ?
-        null : value[column];
+      query.values[1][0][i] = value[column];
     }
 
     return query;
