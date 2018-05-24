@@ -52,13 +52,13 @@ export default class Database extends Worker {
     this._join = [];
     this._insert = {};
     this._into = {};
+    this._key = null;
     this._limit = {};
     this._nest = null;
     this._order = [];
     this._replace = null;
     this._select = [];
     this._set = {};
-    this._shard = null;
     this._union = [];
     this._update = {};
     this._query = null;
@@ -157,6 +157,11 @@ export default class Database extends Worker {
     return this;
   }
 
+  key(value) {
+    this._key = value;
+    return this;
+  }
+
   limit(value) {
     if (typeof value === 'function') {
       this._limit = value;
@@ -245,11 +250,6 @@ export default class Database extends Worker {
 
   domain(value) {
     this._domain = value;
-    return this;
-  }
-
-  shard(value) {
-    this._shard = value;
     return this;
   }
 
@@ -820,7 +820,7 @@ export default class Database extends Worker {
         return;
       }
 
-      data = this.merge(box, data, { query, result });
+      data = this.merge(box, data, { query, result, key: this._key });
 
       this.pass(box, data, callback);
     } catch (finalError) {
