@@ -1,6 +1,7 @@
 /*eslint no-useless-escape: 0 */
 
 import { Worker } from '@scola/worker';
+import trim from 'lodash-es/trim';
 import mysql from 'mysql';
 import sprintf from 'sprintf-js';
 
@@ -564,10 +565,10 @@ export default class Database extends Worker {
   _prepareCompareAsArray(field, columns, operators, values, value, operator) {
     const sqlOr = [];
 
-    for (let j = 0; j < columns.length; j += 1) {
+    for (let i = 0; i < columns.length; i += 1) {
       sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
-        this._prepareCompareField(field, columns[j], operators[j],
-          values, value[j]);
+        this._prepareCompareField(field, columns[i], operators[i],
+          values, value[i]);
     }
 
     return '(' + sqlOr.join(' ' + operator + ' ') + ')';
@@ -590,13 +591,13 @@ export default class Database extends Worker {
     value = typeof value === 'object' && value.toSqlString ?
       ([value]) : String(value).match(/[^"\s]+|"[^"]+"/g);
 
-    for (let k = 0; k < value.length; k += 1) {
+    for (let i = 0; i < value.length; i += 1) {
       sqlOr = [];
 
       for (let j = 0; j < columns.length; j += 1) {
         sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
           this._prepareCompareField(field, columns[j], operators[j],
-            values, value[k]);
+            values, trim(value[i], '"'));
       }
 
       sqlAnd[sqlAnd.length] = sqlOr.length > 1 ?
