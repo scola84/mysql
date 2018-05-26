@@ -597,7 +597,7 @@ export default class Database extends Worker {
       for (let j = 0; j < columns.length; j += 1) {
         sqlOr[sqlOr.length] = (field.not ? 'NOT ' : '') +
           this._prepareCompareField(field, columns[j], operators[j],
-            values, trim(value[i], '"'));
+            values, value[i]);
       }
 
       sqlAnd[sqlAnd.length] = sqlOr.length > 1 ?
@@ -615,6 +615,8 @@ export default class Database extends Worker {
       return this._prepareCompareFieldRaw(field, column, operator,
         values, value);
     }
+
+    value = trim(value, '"');
 
     if (operator === 'IN') {
       return this._prepareCompareFieldIn(field, column, operator,
