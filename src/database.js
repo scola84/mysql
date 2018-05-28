@@ -616,12 +616,12 @@ export default class Database extends Worker {
         values, value);
     }
 
-    value = trim(value, '"');
-
     if (operator === 'IN') {
       return this._prepareCompareFieldIn(field, column, operator,
         values, value);
     }
+
+    value = trim(value, '"');
 
     const interval = value.match(
       /([\[\(])([-+]?[0-9]*\.?[0-9]*);([-+]?[0-9]*\.?[0-9]*)([\)\]])/

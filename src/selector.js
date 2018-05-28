@@ -97,9 +97,13 @@ export default class Selector extends Database {
     const values = [];
 
     for (let i = 0; i < this._union.length; i += 1) {
+      if (this._union[i].decide(box, data) !== true) {
+        continue;
+      }
+
       query = this._union[i].create(box, data);
 
-      sql += i > 0 ? ') UNION (' : '';
+      sql += sql.length > 0 ? ') UNION (' : '';
       sql += query.sql;
 
       for (let j = 0; j < query.values.length; j += 1) {
@@ -174,6 +178,7 @@ export default class Selector extends Database {
         }
 
         placeholder = '?';
+        value = value === 'NULL' ? this.raw('NULL') : value;
         query.values[i] = { value };
       } else if (field.columns === '*') {
         placeholder = '*';
