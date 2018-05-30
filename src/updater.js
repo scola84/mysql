@@ -26,7 +26,7 @@ export default class Updater extends Database {
         values[values.length] = set.values[i];
       }
 
-      return ' SET ' + set.sql;
+      return ' SET ' + set.sql.join(', ');
     }
 
     return '';
@@ -51,11 +51,12 @@ export default class Updater extends Database {
 
   _prepareSet(set, box, data, query = {}) {
     query = {
-      sql: '?',
-      values: [{}]
+      sql: [],
+      values: []
     };
 
     let column = null;
+    let index = null;
     let value = set.value;
 
     if (typeof value === 'function') {
@@ -66,18 +67,19 @@ export default class Updater extends Database {
       value = value(box, data);
     }
 
+    const mode = Array.isArray(value) ? 'array' : 'object';
+
     for (let i = 0; i < set.columns.length; i += 1) {
       column = set.columns[i];
-
-      if (typeof query.values[0][column] !== 'undefined') {
-        continue;
-      }
+      index = mode === 'object' ? column : i;
 
       if (typeof value[column] === 'undefined' && set.any === true) {
         continue;
       }
 
-      query.values[0][column] = value[column];
+      query.sql[query.sql.length] = '?? = ?';
+      query.values[query.values.length] = column;
+      query.values[query.values.length] = value[index];
     }
 
     return query;
