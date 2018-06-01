@@ -68,13 +68,16 @@ export default class Updater extends Database {
     }
 
     const mode = Array.isArray(value) ? 'array' : 'object';
+    const undef = set.undefined || [];
 
     for (let i = 0; i < set.columns.length; i += 1) {
       column = set.columns[i];
       index = mode === 'object' ? column : i;
 
-      if (typeof value[column] === 'undefined' && set.any === true) {
-        continue;
+      if (typeof value[column] === 'undefined') {
+        if (set.any === true || undef.indexOf(column) > -1) {
+          continue;
+        }
       }
 
       query.sql[query.sql.length] = '?? = ?';
