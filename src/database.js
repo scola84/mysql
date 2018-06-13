@@ -522,12 +522,8 @@ export default class Database extends Worker {
       sql = [];
       field = compare[i];
 
-      columns = Array.isArray(field.columns) ?
-        field.columns : [field.columns];
-
-      operators = Array.isArray(field.operator) ?
-        field.operator : [field.operator];
-
+      columns = field.columns;
+      operators = field.operator;
       value = field.value;
 
       if (value instanceof Database) {
@@ -538,6 +534,22 @@ export default class Database extends Worker {
         continue;
       }
 
+      if (typeof columns === 'function') {
+        if (typeof box === 'undefined') {
+          continue;
+        }
+
+        columns = columns(box, data);
+      }
+
+      if (typeof operators === 'function') {
+        if (typeof box === 'undefined') {
+          continue;
+        }
+
+        operators = operators(box, data);
+      }
+
       if (typeof value === 'function') {
         if (typeof box === 'undefined') {
           continue;
@@ -545,6 +557,9 @@ export default class Database extends Worker {
 
         value = value(box, data);
       }
+
+      columns = Array.isArray(columns) ? columns : [columns];
+      operators = Array.isArray(operators) ? operators : [operators];
 
       if (Array.isArray(value)) {
         sql = this._prepareCompareAsArray(field, columns, operators,
