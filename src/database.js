@@ -258,6 +258,10 @@ export default class Database extends Worker {
     data = this.filter(box, data);
     const query = this.create(box, data);
 
+    if (this._log === true) {
+      console.log(this.formatQuery(query));
+    }
+
     this
       .getPool(box, data)
       .query(query, (error, result) => {
