@@ -258,7 +258,7 @@ export default class Database extends Worker {
     data = this.filter(box, data);
     const query = this.create(box, data);
 
-    if (this._log === true) {
+    if (this._log === 'query') {
       console.log(this.formatQuery(query));
     }
 
