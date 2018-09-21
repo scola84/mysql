@@ -20,6 +20,7 @@ export const parts = {
     bit_and: 'BIT_AND(%1$s)',
     bit_or: 'BIT_OR(%1$s)',
     bit_xor: 'BIT_XOR(%1$s)',
+    cast: 'CAST(%1$s AS %2$s)',
     coalesce: 'COALESCE(%1$s)',
     concat: 'GROUP_CONCAT(%1$s)',
     concat_ws: 'CONCAT_WS("%2$s",%1$s)',
