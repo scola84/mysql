@@ -48,15 +48,13 @@ export default class Database extends Worker {
     super(options);
 
     this._delete = {};
-    this._domain = null;
     this._from = {};
     this._group = [];
+    this._host = null;
     this._join = [];
     this._insert = {};
     this._into = {};
-    this._key = null;
     this._limit = {};
-    this._nest = null;
     this._order = [];
     this._replace = null;
     this._select = [];
@@ -66,6 +64,10 @@ export default class Database extends Worker {
     this._query = null;
     this._where = [];
 
+    this._key = null;
+    this._nest = null;
+
+    this.setKey(options.key);
     this.setNest(options.nest);
   }
 
@@ -91,6 +93,19 @@ export default class Database extends Worker {
     }
 
     return pools[host];
+  }
+
+  getKey() {
+    return this._key;
+  }
+
+  setKey(value = null) {
+    this._key = value;
+    return this;
+  }
+
+  getNest() {
+    return this._nest;
   }
 
   setNest(value = false) {
@@ -133,6 +148,11 @@ export default class Database extends Worker {
     return this;
   }
 
+  host(value) {
+    this._host = value;
+    return this;
+  }
+
   insert(value) {
     Object.assign(this._insert, value);
     return this;
@@ -171,6 +191,11 @@ export default class Database extends Worker {
       Object.assign(this._limit, value);
     }
 
+    return this;
+  }
+
+  nest(value) {
+    this._nest = value;
     return this;
   }
 
@@ -242,16 +267,6 @@ export default class Database extends Worker {
     }
 
     Object.assign(this._where[index], value);
-    return this;
-  }
-
-  host(value) {
-    this._host = value;
-    return this;
-  }
-
-  domain(value) {
-    this._domain = value;
     return this;
   }
 
