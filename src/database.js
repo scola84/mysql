@@ -862,6 +862,7 @@ export default class Database extends Worker {
 
       this.pass(box, data, callback);
     } catch (finalError) {
+      finalError.data = data;
       this.fail(box, finalError, callback);
     }
   }
