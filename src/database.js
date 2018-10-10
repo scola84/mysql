@@ -869,9 +869,19 @@ export default class Database extends Worker {
 
   _processError(error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      error = new Error('409 Object already exists');
+      error = this._processErrorDuplicate(error);
     }
 
     throw error;
+  }
+
+  _processErrorDuplicate(error) {
+    const reason = 'duplicate_' +
+      (error.sqlMessage.match(/key '(.+)'/) || ['key']).pop();
+
+    error = new Error('409 Object already exists');
+    error.reason = reason.toLowerCase();
+
+    return error;
   }
 }
