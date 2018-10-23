@@ -13,7 +13,8 @@ export const parts = {
     asc: '?? ASC',
     ascsig: 'CAST(?? AS SIGNED) ASC',
     desc: '?? DESC',
-    descsig: 'CAST(?? AS SIGNED) DESC'
+    descsig: 'CAST(?? AS SIGNED) DESC',
+    nodir: '??'
   },
   wrap: {
     avg: 'AVG(%1$s)',
@@ -297,12 +298,12 @@ export default class Database extends Worker {
     return mysql.format(query.sql, query.values);
   }
 
-  formatHost(name, shard = null) {
+  formatHost(name, shard) {
     const options = poolOptions[name];
 
     let host = options.host;
 
-    if (shard !== null && typeof options.shards !== 'undefined') {
+    if (typeof options.shards !== 'undefined') {
       host = this._formatHost(host, options.shards, shard);
     }
 
@@ -441,6 +442,10 @@ export default class Database extends Worker {
   }
 
   _formatHost(host, shards, shard) {
+    if (typeof shard !== 'number') {
+      throw new Error('Shard is not a number');
+    }
+
     return sprintf.sprintf(host, Math.floor(shard / shards));
   }
 
@@ -509,7 +514,7 @@ export default class Database extends Worker {
         field.dir : [field.dir];
 
       for (let j = 0; j < columns.length; j += 1) {
-        sql[j] = parts.by[dir[j] || 'asc'];
+        sql[j] = parts.by[dir[j] || 'nodir'];
         values[j] = columns[j];
       }
 
