@@ -857,27 +857,24 @@ export default class Database extends Worker {
   }
 
   _process(box, data, callback, query, error, result) {
-    try {
-      if (error) {
-        this._processError(error);
-        return;
-      }
-
-      data = this.merge(box, data, { query, result, key: this._key });
-
-      this.pass(box, data, callback);
-    } catch (finalError) {
-      finalError.data = data;
-      this.fail(box, finalError, callback);
+    if (error) {
+      this._processError(box, data, callback, error);
+      return;
     }
+
+    data = this.merge(box, data, { query, result, key: this._key });
+    this.pass(box, data, callback);
   }
 
-  _processError(error) {
+  _processError(box, data, callback, error) {
     if (error.code === 'ER_DUP_ENTRY') {
       error = this._processErrorDuplicate(error);
     }
 
-    throw error;
+    error.data = data;
+    error.tag = 'mysql,database';
+
+    this.fail(box, error, callback);
   }
 
   _processErrorDuplicate(error) {
