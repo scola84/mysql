@@ -282,7 +282,11 @@ export default class Database extends Worker {
     this
       .getPool(box, data)
       .query(query, (error, result) => {
-        this._process(box, data, callback, query, error, result);
+        try {
+          this._process(box, data, callback, query, error, result);
+        } catch (tryError) {
+          this._processError(box, data, callback, tryError);
+        }
       });
   }
 
