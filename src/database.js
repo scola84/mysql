@@ -342,7 +342,7 @@ export default class Database extends Worker {
         values[values.length] = head.values[i];
       }
 
-      return ' ' + head.sql;
+      return ' ' + head.sql.join(', ');
     }
 
     return '';
@@ -780,7 +780,7 @@ export default class Database extends Worker {
 
   _prepareHead(head, box, data, query = {}) {
     query = {
-      sql: query.sql || '',
+      sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
     };
 
@@ -808,11 +808,11 @@ export default class Database extends Worker {
     }
 
     if (typeof table !== 'undefined') {
-      table = this._formatTable(box, data, table, shard);
+      table = Array.isArray(table) ? table : [table];
 
-      if (table !== null) {
-        query.sql = '??';
-        query.values[0] = table;
+      for (let i = 0; i < table.length; i += 1) {
+        query.sql[i] = '??';
+        query.values[i] = this._formatTable(box, data, table[i], shard);
       }
     }
 
