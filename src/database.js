@@ -518,8 +518,10 @@ export default class Database extends Worker {
         field.dir : [field.dir];
 
       for (let j = 0; j < columns.length; j += 1) {
-        sql[j] = parts.by[dir[j] || 'nodir'];
-        values[j] = columns[j];
+        if (typeof columns[j] !== 'undefined') {
+          sql[j] = parts.by[dir[j] || 'nodir'];
+          values[j] = columns[j];
+        }
       }
 
       if (sql.length) {
