@@ -533,7 +533,7 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareCompare(compare, box, data, query = {}, operator) {
+  _prepareCompare(compare, box, data, query = {}, join) {
     query = {
       sql: query.sql ? query.sql.slice() : [],
       values: query.values ? query.values.slice() : []
@@ -594,10 +594,10 @@ export default class Database extends Worker {
 
       if (Array.isArray(value)) {
         sql = this._prepareCompareAsArray(field, columns, operators,
-          query.values, value, operator);
+          query.values, value, field.join || join);
       } else {
         sql = this._prepareCompareAsString(field, columns, operators,
-          query.values, value, operator);
+          query.values, value, field.join || join);
       }
 
       if (sql) {
@@ -608,7 +608,7 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareCompareAsArray(field, columns, operators, values, value, operator) {
+  _prepareCompareAsArray(field, columns, operators, values, value, join) {
     const sqlOr = [];
 
     for (let i = 0; i < columns.length; i += 1) {
@@ -617,10 +617,10 @@ export default class Database extends Worker {
           values, value[i]);
     }
 
-    return '(' + sqlOr.join(' ' + operator + ' ') + ')';
+    return '(' + sqlOr.join(' ' + join + ' ') + ')';
   }
 
-  _prepareCompareAsString(field, columns, operators, values, value, operator) {
+  _prepareCompareAsString(field, columns, operators, values, value, join) {
     if (typeof value === 'undefined' || value === null || value === '') {
       if (field.required !== false) {
         const error = new Error('500 Compare value undefined');
@@ -647,7 +647,7 @@ export default class Database extends Worker {
       }
 
       sqlAnd[sqlAnd.length] = sqlOr.length > 1 ?
-        '(' + sqlOr.join(' ' + operator + ' ') + ')' :
+        '(' + sqlOr.join(' ' + join + ' ') + ')' :
         sqlOr.join('');
     }
 
