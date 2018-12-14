@@ -5,8 +5,8 @@ import trim from 'lodash-es/trim';
 import mysql from 'mysql';
 import sprintf from 'sprintf-js';
 
-const pools = {};
-let poolOptions = {};
+let cluster = null;
+let clusters = {};
 
 export const parts = {
   by: {
@@ -42,7 +42,14 @@ export const parts = {
 
 export default class Database extends Worker {
   static setOptions(value) {
-    poolOptions = value;
+    clusters = value;
+    cluster = mysql.createPoolCluster();
+
+    Object.keys(clusters).forEach((name) => {
+      clusters[name].pools.forEach((pool) => {
+        cluster.add(pool.name, pool);
+      });
+    });
   }
 
   constructor(options = {}) {
@@ -79,21 +86,14 @@ export default class Database extends Worker {
       name = name(box, data);
     }
 
-    const options = poolOptions[name];
     const shard = this._host && this._host.shard ?
       this._host.shard(box, data) : null;
 
-    const database = null;
-    const host = this.formatHost(name, shard);
-
-    if (typeof pools[host] === 'undefined') {
-      pools[host] = mysql.createPool(Object.assign({}, options, {
-        database,
-        host
-      }));
+    if (typeof clusters[name].shards !== 'undefined') {
+      name = `${name}_${Math.floor(shard / clusters[name].shards)}`;
     }
 
-    return pools[host];
+    return cluster.of(name + '*');
   }
 
   getKey() {
@@ -302,18 +302,6 @@ export default class Database extends Worker {
     return mysql.format(query.sql, query.values);
   }
 
-  formatHost(name, shard) {
-    const options = poolOptions[name];
-
-    let host = options.host;
-
-    if (typeof options.shards !== 'undefined') {
-      host = this._formatHost(host, options.shards, shard);
-    }
-
-    return host;
-  }
-
   operate(name, operator, value) {
     return mysql.raw(`${mysql.escapeId(name)} ${operator} ${value}`);
   }
@@ -445,14 +433,6 @@ export default class Database extends Worker {
     return '';
   }
 
-  _formatHost(host, shards, shard) {
-    if (typeof shard !== 'number') {
-      throw new Error('Shard is not a number');
-    }
-
-    return sprintf.sprintf(host, Math.floor(shard / shards));
-  }
-
   _formatTable(box, data, table, shard = null, quote = false) {
     let name = this._host ? this._host.name : 'default';
 
@@ -464,7 +444,7 @@ export default class Database extends Worker {
       name = name(box, data);
     }
 
-    let database = poolOptions[name].database;
+    let database = clusters[name].database;
 
     if (shard !== null) {
       database = sprintf.sprintf(database, shard);
