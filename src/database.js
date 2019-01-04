@@ -1,12 +1,17 @@
 /*eslint no-useless-escape: 0 */
 
 import { Worker } from '@scola/worker';
+import merge from 'lodash-es/merge';
 import trim from 'lodash-es/trim';
 import mysql from 'mysql';
 import sprintf from 'sprintf-js';
 
-let cluster = null;
-let clusters = {};
+const cluster = mysql.createPoolCluster();
+
+const woptions = {
+  default: 'default',
+  clusters: {}
+};
 
 export const parts = {
   by: {
@@ -41,12 +46,11 @@ export const parts = {
 };
 
 export default class Database extends Worker {
-  static setOptions(value) {
-    clusters = value;
-    cluster = mysql.createPoolCluster();
+  static setOptions(options) {
+    merge(woptions, options);
 
-    Object.keys(clusters).forEach((name) => {
-      clusters[name].pools.forEach((pool) => {
+    Object.keys(woptions.clusters).forEach((name) => {
+      woptions.clusters[name].pools.forEach((pool) => {
         cluster.add(pool.name, pool);
       });
     });
@@ -80,7 +84,9 @@ export default class Database extends Worker {
   }
 
   getPool(box, data) {
-    let name = this._host ? this._host.name : 'default';
+    let name = this._host ?
+      this._host.name :
+      woptions.default;
 
     if (typeof name === 'function') {
       name = name(box, data);
@@ -89,8 +95,8 @@ export default class Database extends Worker {
     const shard = this._host && this._host.shard ?
       this._host.shard(box, data) : null;
 
-    if (typeof clusters[name].shards !== 'undefined') {
-      name = `${name}_${Math.floor(shard / clusters[name].shards)}`;
+    if (typeof woptions.clusters[name].shards !== 'undefined') {
+      name = `${name}_${Math.floor(shard / woptions.clusters[name].shards)}`;
     }
 
     return cluster.of(name + '*');
@@ -434,7 +440,9 @@ export default class Database extends Worker {
   }
 
   _formatTable(box, data, table, shard = null, quote = false) {
-    let name = this._host ? this._host.name : 'default';
+    let name = this._host ?
+      this._host.name :
+      woptions.default;
 
     if (typeof name === 'function') {
       if (typeof box === 'undefined') {
@@ -444,7 +452,7 @@ export default class Database extends Worker {
       name = name(box, data);
     }
 
-    let database = clusters[name].database;
+    let database = woptions.clusters[name].database;
 
     if (shard !== null) {
       database = sprintf.sprintf(database, shard);
