@@ -6,12 +6,8 @@ import trim from 'lodash-es/trim';
 import mysql from 'mysql';
 import sprintf from 'sprintf-js';
 
-const cluster = mysql.createPoolCluster();
-
-const woptions = {
-  default: 'default',
-  clusters: {}
-};
+const pools = {};
+const woptions = {};
 
 export const parts = {
   by: {
@@ -48,12 +44,6 @@ export const parts = {
 export default class Database extends Worker {
   static setOptions(options) {
     merge(woptions, options);
-
-    Object.keys(woptions.clusters).forEach((name) => {
-      woptions.clusters[name].pools.forEach((pool) => {
-        cluster.add(pool.name, pool);
-      });
-    });
   }
 
   constructor(options = {}) {
@@ -95,11 +85,23 @@ export default class Database extends Worker {
     const shard = this._host && this._host.shard ?
       this._host.shard(box, data) : null;
 
-    if (typeof woptions.clusters[name].shards !== 'undefined') {
-      name = `${name}_${Math.floor(shard / woptions.clusters[name].shards)}`;
+    const index = shard === null ?
+      0 :
+      Math.floor(shard / woptions[name].shards);
+
+    const pool = name + index;
+
+    if (typeof pools[pool] === 'undefined') {
+      let options = woptions[name].options;
+
+      if (typeof options === 'function') {
+        options = options(box, data, index);
+      }
+
+      pools[pool] = mysql.createPool(options);
     }
 
-    return cluster.of(name + '*');
+    return pools[pool];
   }
 
   getKey() {
@@ -452,7 +454,7 @@ export default class Database extends Worker {
       name = name(box, data);
     }
 
-    let database = woptions.clusters[name].database;
+    let database = woptions[name].database;
 
     if (shard !== null) {
       database = sprintf.sprintf(database, shard);
