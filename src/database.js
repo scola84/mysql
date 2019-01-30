@@ -41,9 +41,18 @@ export const parts = {
   }
 };
 
+const triggers = [];
+
 export default class Database extends Worker {
   static setOptions(options) {
     merge(woptions, options);
+  }
+
+  static createTrigger(event, worker) {
+    triggers.push({
+      event: new RegExp(event),
+      worker
+    });
   }
 
   constructor(options = {}) {
@@ -61,6 +70,7 @@ export default class Database extends Worker {
     this._replace = null;
     this._select = [];
     this._set = {};
+    this._trigger = null;
     this._union = [];
     this._update = {};
     this._query = null;
@@ -250,6 +260,11 @@ export default class Database extends Worker {
 
   set(value) {
     Object.assign(this._set, value);
+    return this;
+  }
+
+  trigger(value) {
+    this._trigger = value;
     return this;
   }
 
@@ -858,7 +873,16 @@ export default class Database extends Worker {
       return;
     }
 
-    data = this.merge(box, data, { query, result, key: this._key });
+    if (this._trigger) {
+      this._processTriggers(box, data, query);
+    }
+
+    data = this.merge(box, data, {
+      key: this._key,
+      query,
+      result,
+    });
+
     this.pass(box, data, callback);
   }
 
@@ -881,5 +905,21 @@ export default class Database extends Worker {
     error.reason = reason.toLowerCase();
 
     return error;
+  }
+
+  _processTriggers(box, data, query) {
+    data = this._trigger(box, data);
+
+    let match = null;
+    let trigger = null;
+
+    for (let i = 0; i < triggers.length; i += 1) {
+      trigger = triggers[i];
+      match = this.formatQuery(query).match(trigger.event);
+
+      if (match !== null) {
+        trigger.worker.handle(box, data);
+      }
+    }
   }
 }
