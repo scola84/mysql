@@ -80,9 +80,15 @@ export default class Updater extends Database {
         }
       }
 
-      query.sql[query.sql.length] = '?? = ?';
       query.values[query.values.length] = column;
-      query.values[query.values.length] = value[index];
+
+      if (value[column] instanceof Database) {
+        query.sql[query.sql.length] = '?? = (' +
+          value[column].format(box, data) + ')';
+      } else {
+        query.sql[query.sql.length] = '?? = ?';
+        query.values[query.values.length] = value[index];
+      }
     }
 
     return query;
