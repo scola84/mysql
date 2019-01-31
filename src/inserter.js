@@ -80,6 +80,7 @@ export default class Inserter extends Database {
     }
 
     query.values[1][0] = [];
+    const undef = insert.undefined || [];
 
     for (let i = 0; i < insert.columns.length; i += 1) {
       column = insert.columns[i];
@@ -88,7 +89,8 @@ export default class Inserter extends Database {
         continue;
       }
 
-      query.values[1][0][i] = value[column];
+      query.values[1][0][i] = typeof value[column] === 'undefined' &&
+        undef.indexOf(column) > -1 ? null : value[column];
     }
 
     return query;
