@@ -1,6 +1,7 @@
 /*eslint no-useless-escape: 0 */
 
 import { Worker } from '@scola/worker';
+import each from 'async/each';
 import merge from 'lodash-es/merge';
 import trim from 'lodash-es/trim';
 import mysql from 'mysql';
@@ -41,15 +42,18 @@ export const parts = {
   }
 };
 
-const triggers = [];
+const triggers = {
+  after: [],
+  before: []
+};
 
 export default class Database extends Worker {
   static setOptions(options) {
     merge(woptions, options);
   }
 
-  static createTrigger(event, worker) {
-    triggers.push({
+  static createTrigger(time, event, worker) {
+    triggers[time].push({
       event: new RegExp(event),
       worker
     });
@@ -302,15 +306,17 @@ export default class Database extends Worker {
       console.log(this.formatQuery(query));
     }
 
-    this
-      .getPool(box, data)
-      .query(query, (error, result) => {
-        try {
-          this._process(box, data, callback, query, error, result);
-        } catch (tryError) {
-          this._processError(box, data, callback, tryError);
-        }
-      });
+    this._processTriggers('before', box, data, query, () => {
+      this
+        .getPool(box, data)
+        .query(query, (error, result) => {
+          try {
+            this._process(box, data, callback, query, error, result);
+          } catch (tryError) {
+            this._processError(box, data, callback, tryError);
+          }
+        });
+    });
   }
 
   create() {
@@ -873,17 +879,15 @@ export default class Database extends Worker {
       return;
     }
 
-    if (this._trigger) {
-      this._processTriggers(box, data, query);
-    }
+    this._processTriggers('after', box, data, query, () => {
+      data = this.merge(box, data, {
+        key: this._key,
+        query,
+        result,
+      });
 
-    data = this.merge(box, data, {
-      key: this._key,
-      query,
-      result,
+      this.pass(box, data, callback);
     });
-
-    this.pass(box, data, callback);
   }
 
   _processError(box, data, callback, error) {
@@ -907,19 +911,35 @@ export default class Database extends Worker {
     return error;
   }
 
-  _processTriggers(box, data, query) {
+  _processTriggers(time, box, data, query, callback) {
+    if (this._trigger === null) {
+      callback();
+      return;
+    }
+
     data = this._trigger(box, data);
+
+    const items = [];
 
     let match = null;
     let trigger = null;
 
-    for (let i = 0; i < triggers.length; i += 1) {
-      trigger = triggers[i];
+    for (let i = 0; i < triggers[time].length; i += 1) {
+      trigger = triggers[time][i];
       match = this.formatQuery(query).match(trigger.event);
 
       if (match !== null) {
-        trigger.worker.handle(box, data);
+        items[items.length] = trigger.worker;
       }
     }
+
+    if (items.length === 0) {
+      callback();
+      return;
+    }
+
+    each(items, (item, eachCallback) => {
+      item.handle(box, data, eachCallback);
+    }, callback);
   }
 }
