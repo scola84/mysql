@@ -8,7 +8,8 @@
   "main": "./index.js",
   "jsnext:main": "./index.js",
   "dependencies": {
-    "@scola/worker": "^2.14.0",
+    "@scola/worker": "^2.14.1",
+    "async": "^2.6.1",
     "lodash-es": "^4.17.11",
     "mysql": "^2.16.0",
     "sprintf-js": "^1.1.2"
