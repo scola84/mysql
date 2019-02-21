@@ -50,7 +50,17 @@ export default class Inserter extends Database {
       values: []
     };
 
-    query.values[0] = insert.columns;
+    let columns = insert.columns;
+
+    if (typeof columns === 'function') {
+      if (typeof box === 'undefined') {
+        return query;
+      }
+
+      columns = columns(box, data);
+    }
+
+    query.values[0] = columns;
     query.values[1] = [];
 
     if (insert.value instanceof Database) {
@@ -82,8 +92,8 @@ export default class Inserter extends Database {
     query.values[1][0] = [];
     const undef = insert.undefined || [];
 
-    for (let i = 0; i < insert.columns.length; i += 1) {
-      column = insert.columns[i];
+    for (let i = 0; i < columns.length; i += 1) {
+      column = columns[i];
 
       if (typeof query.values[1][0][i] !== 'undefined') {
         continue;
