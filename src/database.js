@@ -75,6 +75,7 @@ export default class Database extends Worker {
     this._replace = null;
     this._select = [];
     this._set = {};
+    this._timeout = null;
     this._trigger = null;
     this._union = [];
     this._update = {};
@@ -87,6 +88,7 @@ export default class Database extends Worker {
     this.setCreate(options.create);
     this.setKey(options.key);
     this.setNest(options.nest);
+    this.setTimeout(options.timeout);
   }
 
   getPool(box, data) {
@@ -144,6 +146,15 @@ export default class Database extends Worker {
 
   setNest(value = false) {
     this._nest = value;
+    return this;
+  }
+
+  getTimeout() {
+    return this._timeout;
+  }
+
+  setTimeout(value = null) {
+    this._timeout = value;
     return this;
   }
 
@@ -315,6 +326,10 @@ export default class Database extends Worker {
 
     if (this._log === 'query') {
       console.log(this.formatQuery(query));
+    }
+
+    if (this._timeout !== null) {
+      query.timeout = this._timeout;
     }
 
     this._processTriggers('before', box, data, query, () => {
