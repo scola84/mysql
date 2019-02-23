@@ -62,6 +62,7 @@ export default class Database extends Worker {
   constructor(options = {}) {
     super(options);
 
+    this._create = null;
     this._delete = {};
     this._from = {};
     this._group = [];
@@ -83,6 +84,7 @@ export default class Database extends Worker {
     this._key = null;
     this._nest = null;
 
+    this.setCreate(options.create);
     this.setKey(options.key);
     this.setNest(options.nest);
   }
@@ -116,6 +118,15 @@ export default class Database extends Worker {
     }
 
     return pools[pool];
+  }
+
+  getCreate() {
+    return this._create;
+  }
+
+  setCreate(value = null) {
+    this._create = value;
+    return this;
   }
 
   getKey() {
@@ -319,7 +330,11 @@ export default class Database extends Worker {
     });
   }
 
-  create() {
+  create(box, data) {
+    if (this._create) {
+      return this._create(box, data);
+    }
+
     throw new Error('Not implemented');
   }
 
