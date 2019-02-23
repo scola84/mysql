@@ -64,6 +64,7 @@ export default class Database extends Worker {
 
     this._create = null;
     this._delete = {};
+    this._execute = null;
     this._from = {};
     this._group = [];
     this._host = null;
@@ -86,6 +87,7 @@ export default class Database extends Worker {
     this._nest = null;
 
     this.setCreate(options.create);
+    this.setExecute(options.execute);
     this.setKey(options.key);
     this.setNest(options.nest);
     this.setTimeout(options.timeout);
@@ -128,6 +130,15 @@ export default class Database extends Worker {
 
   setCreate(value = null) {
     this._create = value;
+    return this;
+  }
+
+  getExecute() {
+    return this._execute;
+  }
+
+  setExecute(value = true) {
+    this._execute = value;
     return this;
   }
 
@@ -326,6 +337,11 @@ export default class Database extends Worker {
 
     if (this._log === 'query') {
       console.log(this.formatQuery(query));
+    }
+
+    if (this._execute === false) {
+      this.pass(box, data, callback);
+      return;
     }
 
     if (this._timeout !== null) {
