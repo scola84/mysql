@@ -912,12 +912,12 @@ export default class Database extends Worker {
   }
 
   _processTriggers(time, box, data, query, callback) {
-    if (this._trigger === null) {
+    data = this._trigger ? this._trigger(box, data) : null;
+
+    if (data === null) {
       callback();
       return;
     }
-
-    data = this._trigger(box, data);
 
     const items = [];
 
