@@ -9,6 +9,7 @@ export default class Deleter extends Database {
     const values = [];
     let sql = 'DELETE';
 
+    sql += this._finishWith(box, data, values);
     sql += this._finishDelete(box, data, values);
     sql += this._finishFrom(box, data, values);
     sql += this._finishJoin(box, data, values);
@@ -39,6 +40,7 @@ export default class Deleter extends Database {
 
   _prepare() {
     this._query = {
+      with: this._prepareWith(this._with),
       delete: this._prepareDelete(this._delete),
       from: this._prepareFrom(this._from),
       join: this._prepareJoin(this._join),

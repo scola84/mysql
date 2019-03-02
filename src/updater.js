@@ -9,6 +9,7 @@ export default class Updater extends Database {
     const values = [];
     let sql = 'UPDATE';
 
+    sql += this._finishWith(box, data, values);
     sql += this._finishUpdate(box, data, values);
     sql += this._finishSet(box, data, values);
     sql += this._finishWhere(box, data, values);
@@ -41,6 +42,7 @@ export default class Updater extends Database {
 
   _prepare() {
     this._query = {
+      with: this._prepareWith(this._with),
       update: this._prepareUpdate(this._update),
       set: this._prepareSet(this._set),
       where: this._prepareWhere(this._where),

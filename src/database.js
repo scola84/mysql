@@ -30,11 +30,15 @@ export const parts = {
     count: 'COUNT(%1$s)',
     distinct: 'DISTINCT %1$s',
     if: 'IF(%1$s,%2$s,%3$s)',
+    ifnull: 'IFNULL(%1$s,%2$s)',
     insert: 'INSERT(%1$s,%2$s,%3$s,%4$s)',
+    lag: 'LAG(%1$s)',
+    lead: 'LEAD(%1$s)',
     max: 'MAX(%1$s)',
     min: 'MIN(%1$s)',
     round_date: 'UNIX_TIMESTAMP(FROM_UNIXTIME((?? / 1000) + ??, %1$s)) * 1000',
     round_time: 'FLOOR(?? / (%1$s * 1000)) * (%1$s * 1000)',
+    row_number: 'ROW_NUMBER()',
     std: 'STD(%1$s)',
     sum: 'SUM(%1$s)',
     substring: 'SUBSTRING(%1$s,%2$s,%3$s)',
@@ -82,6 +86,7 @@ export default class Database extends Worker {
     this._update = {};
     this._query = null;
     this._where = [];
+    this._with = [];
 
     this._key = null;
     this._nest = null;
@@ -331,6 +336,18 @@ export default class Database extends Worker {
     return this;
   }
 
+  with(value, index) {
+    index = typeof index === 'undefined' ?
+      this._with.length : index;
+
+    if (typeof this._with[index] === 'undefined') {
+      this._with[index] = {};
+    }
+
+    Object.assign(this._with[index], value);
+    return this;
+  }
+
   act(box, data, callback) {
     data = this.filter(box, data);
     const query = this.create(box, data);
@@ -433,6 +450,8 @@ export default class Database extends Worker {
 
       if (table instanceof Database) {
         string += '(' + field.table.format(box, data) + ')';
+      } else if (table && table[0] === '`') {
+        string += table;
       } else {
         if (typeof shard !== 'undefined') {
           shard = typeof shard === 'function' ? shard(box, data) : shard;
@@ -503,6 +522,21 @@ export default class Database extends Worker {
       }
 
       return sql;
+    }
+
+    return '';
+  }
+
+  _finishWith(box, data, values) {
+    const wth = this._prepareWith(this._with,
+      box, data, this._query.with);
+
+    if (wth.sql.length > 0) {
+      for (let i = 0; i < wth.values.length; i += 1) {
+        values[values.length] = wth.values[i];
+      }
+
+      return 'WITH ' + wth.sql + ' ';
     }
 
     return '';
@@ -747,9 +781,17 @@ export default class Database extends Worker {
   }
 
   _prepareCompareFieldIn(field, column, operator, values, value) {
-    values[values.length] = column.split(',');
+    let placeholder = '?';
+
+    if (typeof column === 'string') {
+      column = column.split(',');
+      placeholder = '??';
+    }
+
+    values[values.length] = column;
     values[values.length] = value;
-    return '(??) IN (?)';
+
+    return `(${placeholder}) IN (?)`;
   }
 
   _prepareCompareFieldInterval(field, column, operator, values, value) {
@@ -817,6 +859,8 @@ export default class Database extends Worker {
 
     if (table instanceof Database) {
       query.sql = '(' + table.format(box, data) + ')';
+    } else if (table && table[0] === '`') {
+      query.sql = table;
     } else {
       if (typeof shard !== 'undefined') {
         if (typeof box === 'undefined') {
@@ -917,6 +961,59 @@ export default class Database extends Worker {
 
   _prepareWhere(where, box, data, query = {}) {
     return this._prepareCompare(where, box, data, query, 'OR');
+  }
+
+  _prepareWith(wth, box, data, query = {}) {
+    query = {
+      sql: query.sql ? query.sql.slice() : [],
+      values: query.values ? query.values.slice() : []
+    };
+
+    let clause = null;
+    let columns = null;
+    let list = null;
+    let name = null;
+    let sql = null;
+    let value = null;
+
+    for (let i = 0; i < wth.length; i += 1) {
+      if (query.sql[i]) {
+        continue;
+      }
+
+      clause = wth[i];
+      list = [];
+
+      columns = clause.columns || [];
+      name = clause.name;
+      value = clause.value;
+
+      columns = Array.isArray(columns) ?
+        columns : [columns];
+
+      if (value instanceof Database) {
+        if (typeof box === 'undefined') {
+          return query;
+        }
+
+        value = value.format(box, data);
+      }
+
+      sql = '??';
+      query.values[query.values.length] = name;
+
+      for (let j = 0; j < columns.length; j += 1) {
+        list[list.length] = '??';
+        query.values[query.values.length] = columns[j];
+      }
+
+      sql += list.length > 0 ? ` (${list.join(',')})` : '';
+      sql += ` AS (${value})`;
+
+      query.sql[query.sql.length] = sql;
+    }
+
+    return query;
   }
 
   _process(box, data, callback, query, error, result) {

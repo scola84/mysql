@@ -20,6 +20,7 @@ export default class Selector extends Database {
 
   _prepare() {
     this._query = {
+      with: this._prepareWith(this._with),
       select: this._prepareSelect(this._select),
       from: this._prepareFrom(this._from),
       join: this._prepareJoin(this._join),
@@ -38,6 +39,7 @@ export default class Selector extends Database {
     const values = [];
     let sql = '';
 
+    sql += this._finishWith(box, data, values);
     sql += this._finishSelect(box, data, values);
     sql += this._finishFrom(box, data, values);
     sql += this._finishJoin(box, data, values);
@@ -134,6 +136,7 @@ export default class Selector extends Database {
     let placeholder = null;
     let value = null;
     let wrap = null;
+    let wrapper = null;
 
     for (let i = 0; i < select.length; i += 1) {
       if (query.sql[i]) {
@@ -171,7 +174,13 @@ export default class Selector extends Database {
 
         if (value instanceof Database) {
           if (typeof box !== 'undefined') {
-            query.sql[i] = sql + '(' + value.format(box, data) + ')';
+            sql += '(' + value.format(box, data) + ')';
+
+            if (field.alias) {
+              sql += ' AS `' + field.alias + '`';
+            }
+
+            query.sql[i] = sql;
           }
 
           continue;
@@ -187,11 +196,22 @@ export default class Selector extends Database {
       }
 
       for (let j = wrap.length - 1; j >= 0; j -= 1) {
+        wrapper = wrap[j];
+
+        wrapper = typeof wrapper === 'object' ? wrapper : {
+          name: wrapper,
+          args: field[wrapper]
+        };
+
         placeholder = sprintf.sprintf(
-          parts.wrap[wrap[j]],
+          parts.wrap[wrapper.name],
           placeholder,
-          ...(field[wrap[j]] || [])
+          ...(wrapper.args || [])
         );
+
+        if (typeof wrapper.over !== 'undefined') {
+          placeholder += ` OVER(${wrapper.over})`;
+        }
       }
 
       sql = sql + placeholder;
