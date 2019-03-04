@@ -85,8 +85,8 @@ export default class Database extends Worker {
     this._union = [];
     this._update = {};
     this._query = null;
-    this._where = [];
     this._with = [];
+    this._where = [];
 
     this._key = null;
     this._nest = null;
@@ -320,6 +320,18 @@ export default class Database extends Worker {
     return this;
   }
 
+  with(value, index) {
+    index = typeof index === 'undefined' ?
+      this._with.length : index;
+
+    if (typeof this._with[index] === 'undefined') {
+      this._with[index] = {};
+    }
+
+    Object.assign(this._with[index], value);
+    return this;
+  }
+
   where(value, index) {
     if (this._union.length > 0) {
       return this._passToUnion('where', value, index);
@@ -333,18 +345,6 @@ export default class Database extends Worker {
     }
 
     Object.assign(this._where[index], value);
-    return this;
-  }
-
-  with(value, index) {
-    index = typeof index === 'undefined' ?
-      this._with.length : index;
-
-    if (typeof this._with[index] === 'undefined') {
-      this._with[index] = {};
-    }
-
-    Object.assign(this._with[index], value);
     return this;
   }
 
@@ -501,6 +501,21 @@ export default class Database extends Worker {
     return '';
   }
 
+  _finishWith(box, data, values) {
+    const wth = this._prepareWith(this._with,
+      box, data, this._query.with);
+
+    if (wth.sql.length > 0) {
+      for (let i = 0; i < wth.values.length; i += 1) {
+        values[values.length] = wth.values[i];
+      }
+
+      return 'WITH ' + wth.sql + ' ';
+    }
+
+    return '';
+  }
+
   _finishWhere(box, data, values) {
     const where = this._prepareWhere(this._where,
       box, data, this._query.where);
@@ -522,21 +537,6 @@ export default class Database extends Worker {
       }
 
       return sql;
-    }
-
-    return '';
-  }
-
-  _finishWith(box, data, values) {
-    const wth = this._prepareWith(this._with,
-      box, data, this._query.with);
-
-    if (wth.sql.length > 0) {
-      for (let i = 0; i < wth.values.length; i += 1) {
-        values[values.length] = wth.values[i];
-      }
-
-      return 'WITH ' + wth.sql + ' ';
     }
 
     return '';
@@ -959,10 +959,6 @@ export default class Database extends Worker {
     return query;
   }
 
-  _prepareWhere(where, box, data, query = {}) {
-    return this._prepareCompare(where, box, data, query, 'OR');
-  }
-
   _prepareWith(wth, box, data, query = {}) {
     query = {
       sql: query.sql ? query.sql.slice() : [],
@@ -1014,6 +1010,10 @@ export default class Database extends Worker {
     }
 
     return query;
+  }
+
+  _prepareWhere(where, box, data, query = {}) {
+    return this._prepareCompare(where, box, data, query, 'OR');
   }
 
   _process(box, data, callback, query, error, result) {
