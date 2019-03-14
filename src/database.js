@@ -52,6 +52,10 @@ const triggers = {
 };
 
 export default class Database extends Worker {
+  static getOptions() {
+    return woptions;
+  }
+
   static setOptions(options) {
     merge(woptions, options);
   }
