@@ -70,6 +70,7 @@ export default class Database extends Worker {
   constructor(options = {}) {
     super(options);
 
+    this._connection = null;
     this._create = null;
     this._delete = {};
     this._execute = null;
@@ -95,6 +96,7 @@ export default class Database extends Worker {
     this._key = null;
     this._nest = null;
 
+    this.setConnection(options.connection);
     this.setCreate(options.create);
     this.setExecute(options.execute);
     this.setKey(options.key);
@@ -131,6 +133,15 @@ export default class Database extends Worker {
     }
 
     return pools[pool];
+  }
+
+  getConnection() {
+    return this._connection;
+  }
+
+  setConnection(value = null) {
+    this._connection = value;
+    return this;
   }
 
   getCreate() {
@@ -369,17 +380,37 @@ export default class Database extends Worker {
       query.timeout = this._timeout;
     }
 
-    this._processTriggers('before', box, data, query, () => {
-      this
-        .getPool(box, data)
-        .query(query, (error, result) => {
+    this.connection(box, data, (connectionError, connection, release = true) => {
+      if (connectionError) {
+        this._processError(box, data, callback, connectionError);
+        return;
+      }
+
+      this._processTriggers('before', box, data, query, () => {
+        connection.query(query, (error, result) => {
+          if (release) {
+            connection.release();
+          }
+
           try {
             this._process(box, data, callback, query, error, result);
           } catch (tryError) {
             this._processError(box, data, callback, tryError);
           }
         });
+      });
     });
+  }
+
+  connection(box, data, callback) {
+    const pool = this.getPool(box, data);
+
+    if (this._connection) {
+      this._connection(box, data, pool, callback);
+      return;
+    }
+
+    pool.getConnection(callback);
   }
 
   create(box, data) {
@@ -1060,6 +1091,7 @@ export default class Database extends Worker {
 
   _processTriggers(time, box, data, query, callback) {
     data = this._trigger ? this._trigger(box, data) : null;
+    query = this.formatQuery(query);
 
     if (data === null) {
       callback();
@@ -1073,7 +1105,7 @@ export default class Database extends Worker {
 
     for (let i = 0; i < triggers[time].length; i += 1) {
       trigger = triggers[time][i];
-      match = this.formatQuery(query).match(trigger.event);
+      match = query.match(trigger.event);
 
       if (match !== null) {
         items[items.length] = trigger.worker;
