@@ -31,15 +31,20 @@ export default class Transactor extends Database {
   act(box, data, callback) {
     if (this._begin) {
       this._beginTransaction(box, data, callback);
+      return;
     }
 
     if (this._commit) {
       this._commitTransaction(box, data, callback);
+      return;
     }
 
     if (this._rollback) {
       this._rollbackTransaction(box, data, callback);
+      return;
     }
+
+    this.pass(box, data, callback);
   }
 
   _beginTransaction(box, data, callback) {
