@@ -10,9 +10,9 @@ export default class Selector extends Database {
     return this._createSingle(box, data);
   }
 
-  merge(box, data, { query, result }) {
+  merge(box, data, { key, query, result }) {
     if (this._merge) {
-      return this._merge(box, data, { query, result });
+      return this._merge(box, data, { key, query, result });
     }
 
     return result;
@@ -82,11 +82,15 @@ export default class Selector extends Database {
     const from = this._prepareFrom(this._from,
       box, data, this._query.from);
 
-    for (let i = 0; i < from.values.length; i += 1) {
-      values[values.length] = from.values[i];
+    if (from.sql.length > 0) {
+      for (let i = 0; i < from.values.length; i += 1) {
+        values[values.length] = from.values[i];
+      }
+
+      return ' FROM ' + from.sql;
     }
 
-    return ' FROM ' + from.sql;
+    return '';
   }
 
   _createUnion(box, data) {
