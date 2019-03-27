@@ -33,6 +33,7 @@ export const parts = {
     ifnull: 'IFNULL(%1$s,%2$s)',
     insert: 'INSERT(%1$s,%2$s,%3$s,%4$s)',
     lag: 'LAG(%1$s)',
+    last_id: 'LAST_INSERT_ID()',
     lead: 'LEAD(%1$s)',
     max: 'MAX(%1$s)',
     min: 'MIN(%1$s)',
@@ -70,10 +71,7 @@ export default class Database extends Worker {
   constructor(options = {}) {
     super(options);
 
-    this._connection = null;
-    this._create = null;
     this._delete = {};
-    this._execute = null;
     this._from = {};
     this._group = [];
     this._host = null;
@@ -85,16 +83,19 @@ export default class Database extends Worker {
     this._replace = null;
     this._select = [];
     this._set = {};
-    this._timeout = null;
-    this._trigger = null;
     this._union = [];
     this._update = {};
     this._query = null;
     this._with = [];
     this._where = [];
 
+    this._connection = null;
+    this._create = null;
+    this._execute = null;
     this._key = null;
     this._nest = null;
+    this._timeout = null;
+    this._trigger = null;
 
     this.setConnection(options.connection);
     this.setCreate(options.create);
@@ -102,6 +103,19 @@ export default class Database extends Worker {
     this.setKey(options.key);
     this.setNest(options.nest);
     this.setTimeout(options.timeout);
+    this.setTrigger(options.trigger);
+  }
+
+  getOptions() {
+    return Object.assign(super.getOptions(), {
+      connection: this._connection,
+      create: this._create,
+      execute: this._execute,
+      key: this._key,
+      nest: this._nest,
+      timeout: this._timeout,
+      trigger: this._trigger
+    });
   }
 
   getPool(box, data) {
@@ -189,6 +203,16 @@ export default class Database extends Worker {
     return this;
   }
 
+  getTrigger() {
+    return this._trigger;
+  }
+
+  setTrigger(value) {
+    this._trigger = this._trigger === false ?
+      false : value;
+    return this;
+  }
+
   delete(value) {
     Object.assign(this._delete, value);
     return this;
@@ -255,11 +279,6 @@ export default class Database extends Worker {
     return this;
   }
 
-  key(value) {
-    this._key = value;
-    return this;
-  }
-
   limit(value) {
     if (typeof value === 'function') {
       this._limit = value;
@@ -267,11 +286,6 @@ export default class Database extends Worker {
       Object.assign(this._limit, value);
     }
 
-    return this;
-  }
-
-  nest(value) {
-    this._nest = value;
     return this;
   }
 
@@ -317,11 +331,6 @@ export default class Database extends Worker {
 
   set(value) {
     Object.assign(this._set, value);
-    return this;
-  }
-
-  trigger(value) {
-    this._trigger = value;
     return this;
   }
 
@@ -376,9 +385,8 @@ export default class Database extends Worker {
       return;
     }
 
-    if (this._timeout !== null) {
-      query.timeout = this._timeout;
-    }
+    query.timeout = this._timeout === null ?
+      query.timeout : this._timeout;
 
     this.connection(box, data, (connectionError, connection, release = true) => {
       if (connectionError) {
@@ -892,9 +900,13 @@ export default class Database extends Worker {
       table = table(box, data);
     }
 
+    if (typeof table === 'undefined') {
+      return query;
+    }
+
     if (table instanceof Database) {
       query.sql = '(' + table.format(box, data) + ')';
-    } else if (table && table[0] === '`') {
+    } else if (table[0] === '`') {
       query.sql = table;
     } else {
       if (typeof shard !== 'undefined') {
