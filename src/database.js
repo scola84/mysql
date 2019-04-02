@@ -1081,6 +1081,10 @@ export default class Database extends Worker {
   }
 
   _processError(box, data, callback, error) {
+    if (typeof error.code !== 'undefined') {
+      error = this._replaceError(error);
+    }
+
     if (error.code === 'ER_DUP_ENTRY') {
       error = this._processErrorDuplicate(error);
     }
@@ -1093,7 +1097,7 @@ export default class Database extends Worker {
 
   _processErrorDuplicate(error) {
     const reason = 'duplicate_' +
-      (error.sqlMessage.match(/key '(.+)'/) || ['key']).pop();
+      (error.message.match(/key '(.+)'/) || ['key']).pop();
 
     error = new Error('409 Object already exists');
     error.reason = reason.toLowerCase();
@@ -1132,5 +1136,12 @@ export default class Database extends Worker {
     each(items, (item, eachCallback) => {
       item.handle(box, data, eachCallback);
     }, callback);
+  }
+
+  _replaceError(error) {
+    const newError = new Error(error.message);
+    newError.code = error.code;
+
+    return newError;
   }
 }
