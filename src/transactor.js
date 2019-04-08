@@ -48,17 +48,22 @@ export default class Transactor extends Database {
   }
 
   _beginTransaction(box, data, callback) {
-    this.connection(box, data, (connectionError, connection) => {
+    this.connection(box, data, (connectionError, connection = null) => {
       if (connectionError) {
-        connectionError.data = data;
-        this.fail(box, connectionError, callback);
+        this._handleError(box, data, callback, connectionError);
+        return;
+      }
+
+      if (connection === null) {
+        this._handleError(box, data, callback,
+          new Error('No connection found'));
         return;
       }
 
       connection.beginTransaction((error) => {
         if (error) {
-          error.data = data;
-          this.fail(box, error, callback);
+          connection.release();
+          this._handleError(box, data, callback, error);
         } else {
           this.pass(box, data, callback);
         }
@@ -67,10 +72,15 @@ export default class Transactor extends Database {
   }
 
   _commitTransaction(box, data, callback) {
-    this.connection(box, data, (connectionError, connection) => {
+    this.connection(box, data, (connectionError, connection = null) => {
       if (connectionError) {
-        connectionError.data = data;
-        this.fail(box, connectionError, callback);
+        this._handleError(box, data, callback, connectionError);
+        return;
+      }
+
+      if (connection === null) {
+        this._handleError(box, data, callback,
+          new Error('No connection found'));
         return;
       }
 
@@ -78,8 +88,7 @@ export default class Transactor extends Database {
         if (error) {
           connection.rollback(() => {
             connection.release();
-            error.data = data;
-            this.fail(box, error, callback);
+            this._handleError(box, data, callback, error);
           });
         } else {
           connection.release();
@@ -90,10 +99,15 @@ export default class Transactor extends Database {
   }
 
   _rollbackTransaction(box, data, callback) {
-    this.connection(box, data, (connectionError, connection) => {
+    this.connection(box, data, (connectionError, connection = null) => {
       if (connectionError) {
-        connectionError.data = data;
-        this.fail(box, connectionError, callback);
+        this._handleError(box, data, callback, connectionError);
+        return;
+      }
+
+      if (connection === null) {
+        this._handleError(box, data, callback,
+          new Error('No connection found'));
         return;
       }
 

@@ -390,20 +390,20 @@ export default class Database extends Worker {
 
     this.connection(box, data, (connectionError, connection, release = true) => {
       if (connectionError) {
-        this._processError(box, data, callback, connectionError);
+        this._handleError(box, data, callback, connectionError);
         return;
       }
 
-      this._processTriggers('before', box, data, query, () => {
+      this._handleTriggers('before', box, data, query, () => {
         connection.query(query, (error, result) => {
           if (release) {
             connection.release();
           }
 
           try {
-            this._process(box, data, callback, query, error, result);
+            this._handle(box, data, callback, query, error, result);
           } catch (tryError) {
-            this._processError(box, data, callback, tryError);
+            this._handleError(box, data, callback, tryError);
           }
         });
       });
@@ -1063,13 +1063,13 @@ export default class Database extends Worker {
     return this._prepareCompare(where, box, data, query, 'OR');
   }
 
-  _process(box, data, callback, query, error, result) {
+  _handle(box, data, callback, query, error, result) {
     if (error) {
-      this._processError(box, data, callback, error);
+      this._handleError(box, data, callback, error);
       return;
     }
 
-    this._processTriggers('after', box, data, query, () => {
+    this._handleTriggers('after', box, data, query, () => {
       data = this.merge(box, data, {
         key: this._key,
         query,
@@ -1080,13 +1080,13 @@ export default class Database extends Worker {
     });
   }
 
-  _processError(box, data, callback, error) {
+  _handleError(box, data, callback, error) {
     if (typeof error.code !== 'undefined') {
       error = this._replaceError(error);
     }
 
     if (error.code === 'ER_DUP_ENTRY') {
-      error = this._processErrorDuplicate(error);
+      error = this._handleErrorDuplicate(error);
     }
 
     error.data = data;
@@ -1095,7 +1095,7 @@ export default class Database extends Worker {
     this.fail(box, error, callback);
   }
 
-  _processErrorDuplicate(error) {
+  _handleErrorDuplicate(error) {
     const reason = 'duplicate_' +
       (error.message.match(/key '(.+)'/) || ['key']).pop();
 
@@ -1105,7 +1105,7 @@ export default class Database extends Worker {
     return error;
   }
 
-  _processTriggers(time, box, data, query, callback) {
+  _handleTriggers(time, box, data, query, callback) {
     data = this._trigger ? this._trigger(box, data) : null;
     query = this.formatQuery(query);
 
