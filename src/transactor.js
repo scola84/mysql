@@ -1,120 +1,82 @@
 import Database from './database';
 
 export default class Transactor extends Database {
-  constructor(options = {}) {
-    super(options);
-
-    this._begin = null;
-    this._commit = null;
-    this._rollback = null;
-
-    this.setBegin(options.begin);
-    this.setCommit(options.commit);
-    this.setRollback(options.rollback);
-  }
-
-  setBegin(value = false) {
-    this._begin = value;
-    return this;
-  }
-
-  setCommit(value = false) {
-    this._commit = value;
-    return this;
-  }
-
-  setRollback(value = false) {
-    this._rollback = value;
-    return this;
-  }
-
-  act(box, data, callback) {
-    if (this._begin) {
-      this._beginTransaction(box, data, callback);
-      return;
+  create(box, data) {
+    if (this._query === null) {
+      this._prepare();
     }
 
-    if (this._commit) {
-      this._commitTransaction(box, data, callback);
-      return;
+    let sql = '';
+
+    sql += this._finishCommit(box, data);
+    sql += this._finishRollback(box, data);
+    sql += this._finishStart(box, data);
+
+    return { sql };
+  }
+
+  _finishCommit(box, data) {
+    const commit = this._prepareCommit(this._commit, box, data,
+      this._query.commit);
+
+    return commit.sql;
+  }
+
+  _finishRollback(box, data) {
+    const rollback = this._prepareRollback(this._rollback, box, data,
+      this._query.rollback);
+
+    return rollback.sql;
+  }
+
+  _finishStart(box, data) {
+    const start = this._prepareStart(this._start, box, data,
+      this._query.start);
+
+    return start.sql;
+  }
+
+  _prepare() {
+    this._query = {
+      commit: this._prepareCommit(this._commit),
+      rollback: this._prepareRollback(this._rollback),
+      start: this._prepareStart(this._start)
+    };
+  }
+
+  _prepareCommit(commit, box, data, query = {}) {
+    query = {
+      sql: ''
+    };
+
+    if (commit === true) {
+      query.sql = 'COMMIT';
     }
 
-    if (this._rollback) {
-      this._rollbackTransaction(box, data, callback);
-      return;
+    return query;
+  }
+
+  _prepareRollback(rollback, box, data, query = {}) {
+    query = {
+      sql: ''
+    };
+
+    if (rollback === true) {
+      query.sql = 'ROLLBACK';
     }
 
-    this.pass(box, data, callback);
+    return query;
   }
 
-  _beginTransaction(box, data, callback) {
-    this.connection(box, data, (connectionError, connection = null) => {
-      if (connectionError) {
-        this._handleError(box, data, callback, connectionError);
-        return;
-      }
+  _prepareStart(start, box, data, query = {}) {
+    query = {
+      sql: ''
+    };
 
-      if (connection === null) {
-        this._handleError(box, data, callback,
-          new Error('No connection found'));
-        return;
-      }
+    if (start === true) {
+      query.sql = 'START TRANSACTION';
+    }
 
-      connection.beginTransaction((error) => {
-        if (error) {
-          connection.release();
-          this._handleError(box, data, callback, error);
-        } else {
-          this.pass(box, data, callback);
-        }
-      });
-    });
-  }
-
-  _commitTransaction(box, data, callback) {
-    this.connection(box, data, (connectionError, connection = null) => {
-      if (connectionError) {
-        this._handleError(box, data, callback, connectionError);
-        return;
-      }
-
-      if (connection === null) {
-        this._handleError(box, data, callback,
-          new Error('No connection found'));
-        return;
-      }
-
-      connection.commit((error) => {
-        if (error) {
-          connection.rollback(() => {
-            connection.release();
-            this._handleError(box, data, callback, error);
-          });
-        } else {
-          connection.release();
-          this.pass(box, data, callback);
-        }
-      });
-    });
-  }
-
-  _rollbackTransaction(box, data, callback) {
-    this.connection(box, data, (connectionError, connection = null) => {
-      if (connectionError) {
-        this._handleError(box, data, callback, connectionError);
-        return;
-      }
-
-      if (connection === null) {
-        this._handleError(box, data, callback,
-          new Error('No connection found'));
-        return;
-      }
-
-      connection.rollback(() => {
-        connection.release();
-        this.pass(box, data, callback);
-      });
-    });
+    return query;
   }
 }

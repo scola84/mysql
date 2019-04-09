@@ -71,6 +71,7 @@ export default class Database extends Worker {
   constructor(options = {}) {
     super(options);
 
+    this._commit = null;
     this._delete = {};
     this._from = {};
     this._group = [];
@@ -86,6 +87,8 @@ export default class Database extends Worker {
     this._union = [];
     this._update = {};
     this._query = null;
+    this._rollback = null;
+    this._start = null;
     this._with = [];
     this._where = [];
 
@@ -213,6 +216,11 @@ export default class Database extends Worker {
     return this;
   }
 
+  commit(value) {
+    this._commit = value;
+    return this;
+  }
+
   delete(value) {
     Object.assign(this._delete, value);
     return this;
@@ -313,6 +321,11 @@ export default class Database extends Worker {
     return this;
   }
 
+  rollback(value) {
+    this._rollback = value;
+    return this;
+  }
+
   select(value, index) {
     if (this._union.length > 0) {
       return this._passToUnion('select', value, index);
@@ -331,6 +344,11 @@ export default class Database extends Worker {
 
   set(value) {
     Object.assign(this._set, value);
+    return this;
+  }
+
+  start(value) {
+    this._start = value;
     return this;
   }
 
@@ -415,6 +433,11 @@ export default class Database extends Worker {
 
     if (this._connection) {
       this._connection(box, data, pool, callback);
+      return;
+    }
+
+    if (box.connection) {
+      callback(null, box.connection, false);
       return;
     }
 
