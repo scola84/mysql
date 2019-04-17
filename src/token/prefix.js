@@ -3,7 +3,6 @@ export default [
   'INTO ',
   'SELECT ',
 
-  ' BETWEEN ',
   ' GROUP BY ',
   ' HAVING ',
   ' JOIN ',
@@ -12,6 +11,5 @@ export default [
   ' ORDER BY ',
   ' LIMIT ',
   ' USING ',
-  ' VALUES ',
   ' WHERE ',
 ];
