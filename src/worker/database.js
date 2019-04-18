@@ -1,6 +1,5 @@
 import { Worker } from '@scola/worker';
 import camel from 'lodash-es/camelCase';
-import sqlstring from 'sqlstring';
 import { Snippet, attach } from '../helper';
 
 export default class Database extends Worker {
@@ -16,10 +15,6 @@ export default class Database extends Worker {
   constructor(options = {}) {
     super(options);
     this._query = null;
-  }
-
-  escape(...args) {
-    return sqlstring.escape(...args);
   }
 
   format(box, data) {
