@@ -113,11 +113,16 @@ export default class Snippet {
   format(box, data) {
     let string = '';
 
-    string += this._prefix;
-    string += this._format(box, data);
-    string += this._postfix;
+    string = this._concat(string, this._prefix);
+    string = this._concat(string, this._format(box, data));
+    string = this._concat(string, this._postfix);
 
     return string;
+  }
+
+  _concat(left, right) {
+    const hasDouble = left[left.length - 1] === ' ' && right[0] === ' ';
+    return left + (hasDouble ? right.slice(1) : right);
   }
 
   _find(path, index) {
@@ -164,9 +169,11 @@ export default class Snippet {
         continue;
       }
 
-      string += count === 0 ?
-        '' : (this._infix === value[0] ? '' : this._infix);
-      string += value;
+      if (count > 0) {
+        string = this._concat(string, this._infix);
+      }
+
+      string = this._concat(string, value);
 
       count += 1;
     }

@@ -9,7 +9,7 @@ import {
 
 export default function attach(Database, Snippet) {
   attachConst(Database, Snippet);
-  attachCustom(Database);
+  attachCustom(Database, Snippet);
   attachToken(Database);
 }
 
@@ -23,12 +23,13 @@ function attachConst(Database, Snippet) {
   Database.prototype.ESCAPE_ID = Snippet.ESCAPE_ID;
 }
 
-function attachCustom(Database) {
+function attachCustom(Database, Snippet) {
   Database.attach('query', '', {
     infix: ' '
   });
 
   Database.attach('string', '', {
+    escape: Snippet.ESCAPE_VALUE,
     infix: ' '
   });
 
