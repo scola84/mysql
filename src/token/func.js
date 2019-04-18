@@ -1,10 +1,13 @@
 /*
-SELECT
-    CONCAT(help_topic.name, ',')
+SELECT DISTINCT
+    CONCAT(IF(LOCATE(' ', name) = 0,
+                name,
+                LEFT(name, LOCATE(' ', name) - 1)),
+            ',') AS name
 FROM
     help_topic
 WHERE
-    REGEXP_LIKE(name, '^[a-z0-9_]+$')
+    REGEXP_LIKE(name, '^[a-z0-9\\s_]+$')
         AND (REGEXP_LIKE(description, '^Syntax:\n+[a-z0-9_]+\\(')
         OR REGEXP_LIKE(description, '^[a-z0-9_]+\\('))
 ORDER BY name;
@@ -44,6 +47,7 @@ export default [
   'CEIL',
   'CEILING',
   'CENTROID',
+  'CHAR',
   'CHARACTER_LENGTH',
   'CHARSET',
   'CHAR_LENGTH',
@@ -71,6 +75,7 @@ export default [
   'CURDATE',
   'CURTIME',
   'DATABASE',
+  'DATE',
   'DATEDIFF',
   'DATE_ADD',
   'DATE_FORMAT',
@@ -124,11 +129,13 @@ export default [
   'GTID_SUBTRACT',
   'HEX',
   'HOUR',
+  'IF',
   'IFNULL',
   'INET6_ATON',
   'INET6_NTOA',
   'INET_ATON',
   'INET_NTOA',
+  'INSERT',
   'INSTR',
   'INTERIORRINGN',
   'INTERSECTS',
@@ -239,6 +246,7 @@ export default [
   'POSITION',
   'POW',
   'POWER',
+  'PROCEDURE',
   'QUARTER',
   'QUOTE',
   'RADIANS',
@@ -246,6 +254,8 @@ export default [
   'RANDOM_BYTES',
   'RELEASE_ALL_LOCKS',
   'RELEASE_LOCK',
+  'REPEAT',
+  'REPLACE',
   'REVERSE',
   'RIGHT',
   'ROUND',
@@ -256,6 +266,7 @@ export default [
   'SECOND',
   'SEC_TO_TIME',
   'SESSION_USER',
+  'SET',
   'SHA1',
   'SHA2',
   'SIGN',
@@ -347,7 +358,9 @@ export default [
   'SYSDATE',
   'SYSTEM_USER',
   'TAN',
+  'TIME',
   'TIMEDIFF',
+  'TIMESTAMP',
   'TIMESTAMPADD',
   'TIMESTAMPDIFF',
   'TIME_FORMAT',
@@ -386,4 +399,16 @@ export default [
   'Y',
   'YEAR',
   'YEARWEEK',
+
+  'CUME_DIST',
+  'DENSE_RANK',
+  'FIRST_VALUE',
+  'LAG',
+  'LAST_VALUE',
+  'LEAD',
+  'NTH_VALUE',
+  'NTILE',
+  'PERCENT_RANK',
+  'RANK',
+  'ROW_NUMBER'
 ];

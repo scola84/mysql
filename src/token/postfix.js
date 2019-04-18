@@ -1,11 +1,23 @@
 export default [
   'ASC',
-  'CURRENT ROW',
   'DESC',
+
+  'CURRENT ROW',
   'FOLLOWING',
   'PRECEDING',
   'RANGE',
   'ROWS',
-  'UNBOUNDED PRECEDING',
   'UNBOUNDED FOLLOWING',
+  'UNBOUNDED PRECEDING',
+
+  'BINARY',
+  'CHAR',
+  'DATE',
+  'DATETIME',
+  'DECIMAL',
+  'JSON',
+  'NCHAR',
+  'SIGNED',
+  'TIME',
+  'UNSIGNED'
 ];
