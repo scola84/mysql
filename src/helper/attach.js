@@ -25,12 +25,16 @@ function attachConst(Database, Snippet) {
 
 function attachCustom(Database) {
   Database.attach('query', '', {
-    infix: ''
+    infix: ' '
+  });
+
+  Database.attach('string', '', {
+    infix: ' '
   });
 
   Database.attach('from', '', {
     infix: '',
-    prefix: ' FROM '
+    prefix: 'FROM '
   });
 }
 
@@ -39,7 +43,7 @@ function attachToken(Database) {
     item = normalize(item);
 
     Database.attach(item.name, 'op', {
-      infix: item.token
+      infix: ` ${item.token} `
     });
   });
 
@@ -47,7 +51,7 @@ function attachToken(Database) {
     item = normalize(item);
 
     Database.attach(item.name, 'pre', {
-      prefix: item.token
+      prefix: `${item.token} `
     });
   });
 
@@ -55,7 +59,7 @@ function attachToken(Database) {
     item = normalize(item);
 
     Database.attach(item.name, 'post', {
-      postfix: item.token
+      postfix: ` ${item.token}`
     });
   });
 

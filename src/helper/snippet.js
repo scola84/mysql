@@ -164,19 +164,14 @@ export default class Snippet {
         continue;
       }
 
-      string += count === 0 ? '' : this._infix;
+      string += count === 0 ?
+        '' : (this._infix === value[0] ? '' : this._infix);
       string += value;
 
       count += 1;
     }
 
-    return this._parenthise(string);
-  }
-
-  _parenthise(string) {
-    return this._parens && string ?
-      '(' + string + ')' :
-      string;
+    return this._parens && string ? `(${string})` : string;
   }
 
   _resolve(value, box, data) {

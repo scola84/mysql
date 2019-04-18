@@ -64,11 +64,11 @@ const infix = [
   'XOR',
 
   'AS',
+  'OVER',
   'UNION'
 ];
 
-export default infix.map((item) => {
-  const token = ` ${item} `;
-  const name = alias[item];
+export default infix.map((token) => {
+  const name = alias[token];
   return name ? { name, token } : token;
 });

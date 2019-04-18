@@ -1,4 +1,11 @@
 export default [
-  ' ASC',
-  ' DESC'
+  'ASC',
+  'CURRENT ROW',
+  'DESC',
+  'FOLLOWING',
+  'PRECEDING',
+  'RANGE',
+  'ROWS',
+  'UNBOUNDED PRECEDING',
+  'UNBOUNDED FOLLOWING',
 ];
