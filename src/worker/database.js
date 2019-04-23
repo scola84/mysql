@@ -5,10 +5,12 @@ import { Snippet, attach } from '../helper';
 export default class Database extends Worker {
   static attach(name, prefix, options = {}) {
     Database.prototype[
-      camel(Database.prototype[name] ? `${prefix}-${name}` : name)
+      camel(Database.prototype[name] ?
+        `${prefix}-${name}` : name)
     ] = (...list) => {
-      Object.assign(options, { list, name });
-      return new Snippet(options);
+      return new Snippet(
+        Object.assign(options, { list, name })
+      );
     };
   }
 
