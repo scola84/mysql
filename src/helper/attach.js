@@ -24,16 +24,16 @@ function attachConst(Database, Snippet) {
 }
 
 function attachCustom(Database, Snippet) {
-  Database.attach('query', '', {
+  Database.attachFactory('query', '', {
     infix: ' '
   });
 
-  Database.attach('string', '', {
+  Database.attachFactory('string', '', {
     escape: Snippet.ESCAPE_VALUE,
     infix: ' '
   });
 
-  Database.attach('from', '', {
+  Database.attachFactory('from', '', {
     infix: '',
     prefix: 'FROM '
   });
@@ -43,7 +43,7 @@ function attachToken(Database) {
   infix.forEach((item) => {
     item = normalize(item);
 
-    Database.attach(item.name, 'op', {
+    Database.attachFactory(item.name, 'op', {
       infix: ` ${item.token} `
     });
   });
@@ -51,7 +51,7 @@ function attachToken(Database) {
   prefix.forEach((item) => {
     item = normalize(item);
 
-    Database.attach(item.name, 'pre', {
+    Database.attachFactory(item.name, 'pre', {
       prefix: `${item.token} `
     });
   });
@@ -59,7 +59,7 @@ function attachToken(Database) {
   postfix.forEach((item) => {
     item = normalize(item);
 
-    Database.attach(item.name, 'post', {
+    Database.attachFactory(item.name, 'post', {
       postfix: ` ${item.token}`
     });
   });
@@ -67,7 +67,7 @@ function attachToken(Database) {
   func.forEach((item) => {
     item = normalize(item);
 
-    Database.attach(item.name, 'fn', {
+    Database.attachFactory(item.name, 'fn', {
       parens: true,
       prefix: item.token
     });
