@@ -1,7 +1,2 @@
-import {
-  Database
-} from './src/worker';
-
-export {
-  Database
-};
+export * from './src/snippet';
+export * from './src/worker';

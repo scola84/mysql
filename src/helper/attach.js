@@ -1,19 +1,24 @@
 import camel from 'lodash-es/camelCase';
-
-import {
-  func,
-  infix,
-  postfix,
-  prefix
-} from '../token';
+import * as token from '../token';
 
 export default function attach(Database, Snippet) {
-  attachConst(Database, Snippet);
-  attachCustom(Database, Snippet);
-  attachToken(Database);
-}
+  function attachFactory(name, prefix, options = {}) {
+    Database.prototype[
+      camel(Database.prototype[name] ?
+        `${prefix}-${name}` : name)
+    ] = (...list) => {
+      return new Snippet(
+        Object.assign(options, { list, name })
+      );
+    };
+  }
 
-function attachConst(Database, Snippet) {
+  function normalize(item) {
+    return typeof item === 'string' ?
+      ({ name: camel(item), token: item }) :
+      item;
+  }
+
   Snippet.ESCAPE_NONE = 0;
   Snippet.ESCAPE_VALUE = 1;
   Snippet.ESCAPE_ID = 2;
@@ -21,61 +26,51 @@ function attachConst(Database, Snippet) {
   Database.prototype.ESCAPE_NONE = Snippet.ESCAPE_NONE;
   Database.prototype.ESCAPE_VALUE = Snippet.ESCAPE_VALUE;
   Database.prototype.ESCAPE_ID = Snippet.ESCAPE_ID;
-}
 
-function attachCustom(Database, Snippet) {
-  Database.attachFactory('query', '', {
+  attachFactory('query', '', {
     infix: ' '
   });
 
-  Database.attachFactory('string', '', {
+  attachFactory('string', '', {
     escape: Snippet.ESCAPE_VALUE,
     infix: ' '
   });
 
-  Database.attachFactory('from', '', {
+  attachFactory('from', '', {
     infix: '',
     prefix: 'FROM '
   });
-}
 
-function attachToken(Database) {
-  infix.forEach((item) => {
+  token.infix.forEach((item) => {
     item = normalize(item);
 
-    Database.attachFactory(item.name, 'op', {
+    attachFactory(item.name, 'op', {
       infix: ` ${item.token} `
     });
   });
 
-  prefix.forEach((item) => {
+  token.prefix.forEach((item) => {
     item = normalize(item);
 
-    Database.attachFactory(item.name, 'pre', {
+    attachFactory(item.name, 'pre', {
       prefix: `${item.token} `
     });
   });
 
-  postfix.forEach((item) => {
+  token.postfix.forEach((item) => {
     item = normalize(item);
 
-    Database.attachFactory(item.name, 'post', {
+    attachFactory(item.name, 'post', {
       postfix: ` ${item.token}`
     });
   });
 
-  func.forEach((item) => {
+  token.func.forEach((item) => {
     item = normalize(item);
 
-    Database.attachFactory(item.name, 'fn', {
+    attachFactory(item.name, 'fn', {
       parens: true,
       prefix: item.token
     });
   });
-}
-
-function normalize(item) {
-  return typeof item === 'string' ?
-    ({ name: camel(item), token: item }) :
-    item;
 }

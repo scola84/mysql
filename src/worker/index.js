@@ -1,5 +1,5 @@
-import Database from './database';
+import QueryBuilder from './builder/query';
 
 export {
-  Database
+  QueryBuilder
 };

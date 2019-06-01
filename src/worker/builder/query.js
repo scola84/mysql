@@ -1,14 +1,10 @@
 import { Worker } from '@scola/worker';
-import camel from 'lodash-es/camelCase';
 import each from 'async/each';
 import merge from 'lodash-es/merge';
 import mysql from 'mysql';
 
-import {
-  Snippet,
-  Table,
-  attach
-} from '../helper';
+import { attach } from '../../helper';
+import { Snippet, Table } from '../../snippet';
 
 const pools = {};
 const woptions = {};
@@ -27,15 +23,8 @@ export default class Database extends Worker {
     merge(woptions, options);
   }
 
-  static attachFactory(name, prefix, options = {}) {
-    Database.prototype[
-      camel(Database.prototype[name] ?
-        `${prefix}-${name}` : name)
-    ] = (...list) => {
-      return new Snippet(
-        Object.assign(options, { list, name })
-      );
-    };
+  static attach() {
+    attach(Database, Snippet);
   }
 
   static createTrigger(time, event, worker) {

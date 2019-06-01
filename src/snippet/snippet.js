@@ -182,8 +182,8 @@ export default class Snippet {
   }
 
   _resolve(value, box, data) {
-    if (value === null) {
-      return null;
+    if (value === null || typeof value === 'undefined') {
+      return value;
     }
 
     if (typeof value === 'function') {
@@ -191,7 +191,7 @@ export default class Snippet {
     }
 
     if (typeof value.format === 'function') {
-      return value.format(box, data);
+      return this._resolve(value.format(box, data), box, data);
     }
 
     return this._resolveEscape(value);
