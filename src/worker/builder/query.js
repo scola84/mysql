@@ -1,37 +1,39 @@
 import { Worker } from '@scola/worker';
-import each from 'async/each';
+import camel from 'lodash-es/camelCase';
 import merge from 'lodash-es/merge';
 import mysql from 'mysql';
-
 import { attach } from '../../helper';
 import { Snippet, Table } from '../../snippet';
 
 const pools = {};
 const woptions = {};
 
-const triggers = {
-  after: [],
-  before: []
-};
+export default class QueryBuilder extends Worker {
+  static attach() {
+    attach(QueryBuilder, Snippet);
+  }
 
-export default class Database extends Worker {
+  static attachFactory(name, prefix, options = {}) {
+    QueryBuilder.prototype[
+      camel(QueryBuilder.prototype[name] ?
+        `${prefix}-${name}` : name)
+    ] = function create(...list) {
+      return new Snippet(
+        Object.assign(options, {
+          builder: this,
+          list,
+          name
+        })
+      );
+    };
+  }
+
   static getOptions() {
     return woptions;
   }
 
   static setOptions(options) {
     merge(woptions, options);
-  }
-
-  static attach() {
-    attach(Database, Snippet);
-  }
-
-  static createTrigger(time, event, worker) {
-    triggers[time].push({
-      event: new RegExp(event),
-      worker
-    });
   }
 
   constructor(options = {}) {
@@ -44,7 +46,6 @@ export default class Database extends Worker {
     this._nest = null;
     this._query = null;
     this._timeout = null;
-    this._trigger = null;
 
     this.setConnection(options.connection);
     this.setExecute(options.execute);
@@ -53,7 +54,6 @@ export default class Database extends Worker {
     this.setNest(options.nest);
     this.setQuery(options.query);
     this.setTimeout(options.timeout);
-    this.setTrigger(options.trigger);
   }
 
   getOptions() {
@@ -65,7 +65,6 @@ export default class Database extends Worker {
       nest: this._nest,
       query: this._query,
       timeout: this._timeout,
-      trigger: this._trigger
     });
   }
 
@@ -118,7 +117,7 @@ export default class Database extends Worker {
     return this._query;
   }
 
-  setQuery(query) {
+  setQuery(query = null) {
     this._query = query;
     return this;
   }
@@ -132,22 +131,17 @@ export default class Database extends Worker {
     return this;
   }
 
-  getTrigger() {
-    return this._trigger;
-  }
-
-  setTrigger(value) {
-    this._trigger = this._trigger === false ?
-      false : value;
-    return this;
-  }
-
   act(box, data, callback) {
+    if (this._query === null) {
+      this.pass(box, data, callback);
+      return;
+    }
+
     data = this.filter(box, data);
 
     const query = {
       nestTables: this._nest,
-      sql: this._query.format(box, data),
+      sql: this._query.resolve(box, data),
       timeout: this._timeout
     };
 
@@ -162,24 +156,26 @@ export default class Database extends Worker {
 
     this.createConnection(box, data, (error, connection, release = true) => {
       if (error) {
-        this._handleError(box, data, callback, error);
+        this.handleError(box, data, callback, error);
         return;
       }
 
-      this._handleTriggers('before', box, data, query, () => {
-        connection.query(query, (queryError, result) => {
-          if (release) {
-            connection.release();
-          }
+      connection.query(query, (queryError, result) => {
+        if (release) {
+          connection.release();
+        }
 
-          try {
-            this._handle(box, data, callback, query, queryError, result);
-          } catch (tryError) {
-            this._handleError(box, data, callback, tryError);
-          }
-        });
+        try {
+          this.handleQuery(box, data, callback, query, queryError, result);
+        } catch (tryError) {
+          this.handleError(box, data, callback, tryError);
+        }
       });
     });
+  }
+
+  build(query) {
+    return this.setQuery(query);
   }
 
   createConnection(box, data, callback) {
@@ -199,14 +195,8 @@ export default class Database extends Worker {
   }
 
   createPool(box, data) {
-    const hostname = this.resolve(
-      this._host ? this._host.name : woptions.default,
-      box,
-      data
-    );
-
-    const shard = this._host && this._host.shard ?
-      this._host.shard(box, data) : null;
+    const hostname = this.formatHostname(box, data);
+    const shard = this.formatShard(box, data);
 
     const index = shard === null ?
       0 :
@@ -216,9 +206,9 @@ export default class Database extends Worker {
 
     if (typeof pools[pool] === 'undefined') {
       const options = this.resolve(
-        woptions[hostname].options,
         box,
         data,
+        woptions[hostname] && woptions[hostname].options || {},
         index
       );
 
@@ -228,67 +218,41 @@ export default class Database extends Worker {
     return pools[pool];
   }
 
-  execute(query) {
-    return this.setQuery(query);
-  }
-
   formatDatabase(box, data, hostname) {
-    return woptions[hostname].database;
+    return this.resolve(
+      box,
+      data,
+      woptions[hostname] && woptions[hostname].database || null
+    );
   }
 
   formatHostname(box, data) {
     return this.resolve(
-      this._host ? this._host.name : woptions.default,
       box,
-      data
+      data,
+      this._host && this._host.name || woptions.default || null
     );
   }
 
   formatShard(box, data) {
-    return this._host && this._host.shard ?
-      this._host.shard(box, data) : null;
+    return this.resolve(
+      box,
+      data,
+      this._host && this._host.shard || null
+    );
   }
 
-  table(...list) {
-    return new Table({
-      database: this,
-      list
-    });
-  }
-
-  _handle(box, data, callback, query, error, result) {
-    if (error) {
-      this._handleError(box, data, callback, error);
-      return;
-    }
-
-    this._handleTriggers('after', box, data, query, () => {
-      data = this.merge(box, data, {
-        key: this._key,
-        query,
-        result,
-      });
-
-      this.pass(box, data, callback);
-    });
-  }
-
-  _handleError(box, data, callback, error) {
-    if (typeof error.code !== 'undefined') {
-      error = this._replaceError(error);
-    }
-
+  handleError(box, data, callback, error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      error = this._handleErrorDuplicate(error);
+      error = this.handleErrorDuplicate(error);
     }
 
     error.data = data;
-    error.tag = 'mysql,database';
 
     this.fail(box, error, callback);
   }
 
-  _handleErrorDuplicate(error) {
+  handleErrorDuplicate(error) {
     const reason = 'duplicate_' +
       (error.message.match(/key '(.+)'/) || ['key']).pop();
 
@@ -298,44 +262,25 @@ export default class Database extends Worker {
     return error;
   }
 
-  _handleTriggers(time, box, data, query, callback) {
-    data = this._trigger ? this._trigger(box, data) : null;
-
-    if (data === null) {
-      callback();
+  handleQuery(box, data, callback, query, error, result) {
+    if (error) {
+      this.handleError(box, data, callback, error);
       return;
     }
 
-    const items = [];
+    data = this.merge(box, data, {
+      key: this._key,
+      query,
+      result,
+    });
 
-    let match = null;
-    let trigger = null;
-
-    for (let i = 0; i < triggers[time].length; i += 1) {
-      trigger = triggers[time][i];
-      match = query.sql.match(trigger.event);
-
-      if (match !== null) {
-        items[items.length] = trigger.worker;
-      }
-    }
-
-    if (items.length === 0) {
-      callback();
-      return;
-    }
-
-    each(items, (item, eachCallback) => {
-      item.handle(box, data, eachCallback);
-    }, callback);
+    this.pass(box, data, callback);
   }
 
-  _replaceError(error) {
-    const newError = new Error(error.message);
-    newError.code = error.code;
-
-    return newError;
+  table(...list) {
+    return new Table({
+      builder: this,
+      list
+    });
   }
 }
-
-attach(Database, Snippet);

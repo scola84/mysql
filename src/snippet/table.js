@@ -4,32 +4,28 @@ import Snippet from './snippet';
 export default class Table extends Snippet {
   constructor(options = {}) {
     super(options);
-
-    this._database = null;
-
-    this.setDatabase(options.database);
     this.setEscape(Snippet.ESCAPE_ID);
   }
 
-  getDatabase() {
-    return this._database;
-  }
+  resolveInner(box, data) {
+    const hostname = this._builder.formatHostname(box, data);
 
-  setDatabase(value = null) {
-    this._database = value;
-    return this;
-  }
-
-  _format(box, data) {
-    const hostname = this._database.formatHostname(box, data);
-    const shard = this._database.formatShard(box, data);
-
-    let database = this._database.formatDatabase(box, data, hostname);
-
-    if (shard !== null) {
-      database = sprintf.sprintf(database, shard);
+    if (hostname === null) {
+      return this._list;
     }
 
-    return this._resolve(database + '.' + this._list, box, data);
+    const database = this._builder.formatDatabase(box, data, hostname);
+
+    if (database === null) {
+      return this._list;
+    }
+
+    const shard = this._builder.formatShard(box, data);
+
+    if (shard === null) {
+      return database + '.' + this._list;
+    }
+
+    return sprintf.sprintf(database, shard) + '.' + this._list;
   }
 }

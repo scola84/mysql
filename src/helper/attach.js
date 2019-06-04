@@ -1,18 +1,7 @@
 import camel from 'lodash-es/camelCase';
 import * as token from '../token';
 
-export default function attach(Database, Snippet) {
-  function attachFactory(name, prefix, options = {}) {
-    Database.prototype[
-      camel(Database.prototype[name] ?
-        `${prefix}-${name}` : name)
-    ] = (...list) => {
-      return new Snippet(
-        Object.assign(options, { list, name })
-      );
-    };
-  }
-
+export default function attach(QueryBuilder, Snippet) {
   function normalize(item) {
     return typeof item === 'string' ?
       ({ name: camel(item), token: item }) :
@@ -23,20 +12,20 @@ export default function attach(Database, Snippet) {
   Snippet.ESCAPE_VALUE = 1;
   Snippet.ESCAPE_ID = 2;
 
-  Database.prototype.ESCAPE_NONE = Snippet.ESCAPE_NONE;
-  Database.prototype.ESCAPE_VALUE = Snippet.ESCAPE_VALUE;
-  Database.prototype.ESCAPE_ID = Snippet.ESCAPE_ID;
+  QueryBuilder.prototype.ESCAPE_NONE = Snippet.ESCAPE_NONE;
+  QueryBuilder.prototype.ESCAPE_VALUE = Snippet.ESCAPE_VALUE;
+  QueryBuilder.prototype.ESCAPE_ID = Snippet.ESCAPE_ID;
 
-  attachFactory('query', '', {
+  QueryBuilder.attachFactory('query', '', {
     infix: ' '
   });
 
-  attachFactory('string', '', {
+  QueryBuilder.attachFactory('string', '', {
     escape: Snippet.ESCAPE_VALUE,
     infix: ' '
   });
 
-  attachFactory('from', '', {
+  QueryBuilder.attachFactory('from', '', {
     infix: '',
     prefix: 'FROM '
   });
@@ -44,7 +33,7 @@ export default function attach(Database, Snippet) {
   token.infix.forEach((item) => {
     item = normalize(item);
 
-    attachFactory(item.name, 'op', {
+    QueryBuilder.attachFactory(item.name, 'op', {
       infix: ` ${item.token} `
     });
   });
@@ -52,7 +41,7 @@ export default function attach(Database, Snippet) {
   token.prefix.forEach((item) => {
     item = normalize(item);
 
-    attachFactory(item.name, 'pre', {
+    QueryBuilder.attachFactory(item.name, 'pre', {
       prefix: `${item.token} `
     });
   });
@@ -60,7 +49,7 @@ export default function attach(Database, Snippet) {
   token.postfix.forEach((item) => {
     item = normalize(item);
 
-    attachFactory(item.name, 'post', {
+    QueryBuilder.attachFactory(item.name, 'post', {
       postfix: ` ${item.token}`
     });
   });
@@ -68,7 +57,7 @@ export default function attach(Database, Snippet) {
   token.func.forEach((item) => {
     item = normalize(item);
 
-    attachFactory(item.name, 'fn', {
+    QueryBuilder.attachFactory(item.name, 'fn', {
       parens: true,
       prefix: item.token
     });

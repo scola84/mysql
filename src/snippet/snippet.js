@@ -3,6 +3,7 @@ import toPath from 'lodash-es/toPath';
 
 export default class Snippet {
   constructor(options = {}) {
+    this._builder = null;
     this._escape = null;
     this._infix = null;
     this._list = null;
@@ -11,6 +12,7 @@ export default class Snippet {
     this._postfix = null;
     this._prefix = null;
 
+    this.setBuilder(options.builder);
     this.setEscape(options.escape);
     this.setInfix(options.infix);
     this.setList(options.list);
@@ -18,6 +20,15 @@ export default class Snippet {
     this.setParens(options.parens);
     this.setPostfix(options.postfix);
     this.setPrefix(options.prefix);
+  }
+
+  getBuilder() {
+    return this._builder;
+  }
+
+  setBuilder(value = null) {
+    this._builder = value;
+    return this;
   }
 
   getEscape() {
@@ -102,30 +113,22 @@ export default class Snippet {
     return this;
   }
 
-  set(path, index, value) {
-    return this._set(path, index, value);
-  }
-
-  find(path, index) {
-    return this._find(path, index);
-  }
-
-  format(box, data) {
-    let string = '';
-
-    string = this._concat(string, this._prefix);
-    string = this._concat(string, this._format(box, data));
-    string = this._concat(string, this._postfix);
-
-    return string;
-  }
-
-  _concat(left, right) {
+  concat(left, right) {
     const hasDouble = left[left.length - 1] === ' ' && right[0] === ' ';
     return left + (hasDouble ? right.slice(1) : right);
   }
 
-  _find(path, index) {
+  set(path, index, value) {
+    const items = this.find(path);
+
+    for (let i = 0; i < items.length; i += 1) {
+      items[i].setItem(index, value);
+    }
+
+    return items;
+  }
+
+  find(path, index) {
     path = toPath(path);
 
     let items = [];
@@ -156,24 +159,34 @@ export default class Snippet {
     return items;
   }
 
-  _format(box, data) {
+  resolve(box, data) {
+    let string = '';
+
+    string = this.concat(string, this._prefix);
+    string = this.concat(string, this.resolveInner(box, data));
+    string = this.concat(string, this._postfix);
+
+    return string;
+  }
+
+  resolveInner(box, data) {
     let string = '';
 
     let count = 0;
     let value = null;
 
     for (let i = 0; i < this._list.length; i += 1) {
-      value = this._resolve(this._list[i], box, data);
+      value = this.resolveValue(box, data, this._list[i]);
 
       if (value === null) {
         continue;
       }
 
       if (count > 0) {
-        string = this._concat(string, this._infix);
+        string = this.concat(string, this._infix);
       }
 
-      string = this._concat(string, value);
+      string = this.concat(string, value);
 
       count += 1;
     }
@@ -181,23 +194,23 @@ export default class Snippet {
     return this._parens && string ? `(${string})` : string;
   }
 
-  _resolve(value, box, data) {
+  resolveValue(box, data, value) {
     if (value === null || typeof value === 'undefined') {
       return value;
     }
 
     if (typeof value === 'function') {
-      return this._resolve(value(box, data), box, data);
+      return this.resolveValue(box, data, value(box, data));
     }
 
-    if (typeof value.format === 'function') {
-      return this._resolve(value.format(box, data), box, data);
+    if (typeof value.resolve === 'function') {
+      return this.resolveValue(box, data, value.resolve(box, data));
     }
 
-    return this._resolveEscape(value);
+    return this.resolveEscape(value);
   }
 
-  _resolveEscape(value) {
+  resolveEscape(value) {
     if (this._escape === Snippet.ESCAPE_VALUE) {
       return sqlstring.escape(value);
     }
@@ -207,15 +220,5 @@ export default class Snippet {
     }
 
     return value;
-  }
-
-  _set(path, index, value) {
-    const items = this.find(path);
-
-    for (let i = 0; i < items.length; i += 1) {
-      items[i].setItem(index, value);
-    }
-
-    return items;
   }
 }
