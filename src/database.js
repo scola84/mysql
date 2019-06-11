@@ -408,7 +408,7 @@ export default class Database extends Worker {
 
     this.connection(box, data, (connectionError, connection, release = true) => {
       if (connectionError) {
-        this._handleError(box, data, callback, connectionError);
+        this._handleError(box, data, callback, query, connectionError);
         return;
       }
 
@@ -421,7 +421,7 @@ export default class Database extends Worker {
           try {
             this._handle(box, data, callback, query, error, result);
           } catch (tryError) {
-            this._handleError(box, data, callback, tryError);
+            this._handleError(box, data, callback, query, tryError);
           }
         });
       });
@@ -1088,7 +1088,7 @@ export default class Database extends Worker {
 
   _handle(box, data, callback, query, error, result) {
     if (error) {
-      this._handleError(box, data, callback, error);
+      this._handleError(box, data, callback, query, error);
       return;
     }
 
@@ -1103,7 +1103,7 @@ export default class Database extends Worker {
     });
   }
 
-  _handleError(box, data, callback, error) {
+  _handleError(box, data, callback, query, error) {
     if (typeof error.code !== 'undefined') {
       error = this._replaceError(error);
     }
@@ -1113,6 +1113,7 @@ export default class Database extends Worker {
     }
 
     error.data = data;
+    error.sql = query && query.sql;
     error.tag = 'mysql,database';
 
     this.fail(box, error, callback);
