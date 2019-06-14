@@ -1,7 +1,9 @@
 import camel from 'lodash-es/camelCase';
-import * as token from '../token';
+import { QueryBuilder } from '../../worker';
+import { Snippet } from '../../snippet';
+import * as token from '../../token';
 
-export default function attach(QueryBuilder, Snippet) {
+export default function attach() {
   function normalize(item) {
     return typeof item === 'string' ?
       ({ name: camel(item), token: item }) :

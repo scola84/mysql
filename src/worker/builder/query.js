@@ -2,17 +2,12 @@ import { Worker } from '@scola/worker';
 import camel from 'lodash-es/camelCase';
 import merge from 'lodash-es/merge';
 import mysql from 'mysql';
-import { attach } from '../../helper';
 import { Snippet, Table } from '../../snippet';
 
 const pools = {};
 const woptions = {};
 
 export default class QueryBuilder extends Worker {
-  static attach() {
-    attach(QueryBuilder, Snippet);
-  }
-
   static attachFactory(name, prefix, options = {}) {
     QueryBuilder.prototype[
       camel(QueryBuilder.prototype[name] ?
@@ -275,6 +270,14 @@ export default class QueryBuilder extends Worker {
     });
 
     this.pass(box, data, callback);
+  }
+
+  merge(box, data, { key, query, result }) {
+    if (this._merge) {
+      return this._merge(box, data, { key, query, result });
+    }
+
+    return result;
   }
 
   table(...list) {

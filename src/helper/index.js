@@ -1,5 +1,5 @@
-import attach from './attach';
+import setup from './setup';
 
 export {
-  attach
+  setup
 };
