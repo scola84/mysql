@@ -5,9 +5,10 @@ import * as token from '../../token';
 
 export default function attach() {
   function normalize(item) {
-    return typeof item === 'string' ?
-      ({ name: camel(item), token: item }) :
-      item;
+    return typeof item === 'string' ? {
+      name: camel(item),
+      token: item
+    } : item;
   }
 
   Snippet.ESCAPE_NONE = 0;

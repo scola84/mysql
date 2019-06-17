@@ -41,6 +41,7 @@ export default class QueryBuilder extends Worker {
     this._nest = null;
     this._query = null;
     this._timeout = null;
+    this._type = null;
 
     this.setConnection(options.connection);
     this.setExecute(options.execute);
@@ -49,6 +50,7 @@ export default class QueryBuilder extends Worker {
     this.setNest(options.nest);
     this.setQuery(options.query);
     this.setTimeout(options.timeout);
+    this.setType(options.type);
   }
 
   getOptions() {
@@ -60,6 +62,7 @@ export default class QueryBuilder extends Worker {
       nest: this._nest,
       query: this._query,
       timeout: this._timeout,
+      type: this._type
     });
   }
 
@@ -123,6 +126,15 @@ export default class QueryBuilder extends Worker {
 
   setTimeout(value = null) {
     this._timeout = value;
+    return this;
+  }
+
+  getType() {
+    return this._type;
+  }
+
+  setType(value = null) {
+    this._type = value;
     return this;
   }
 
@@ -266,7 +278,7 @@ export default class QueryBuilder extends Worker {
     data = this.merge(box, data, {
       key: this._key,
       query,
-      result,
+      result
     });
 
     this.pass(box, data, callback);
@@ -275,6 +287,14 @@ export default class QueryBuilder extends Worker {
   merge(box, data, { key, query, result }) {
     if (this._merge) {
       return this._merge(box, data, { key, query, result });
+    }
+
+    if (this._type === 'list') {
+      return { data: result };
+    }
+
+    if (this._type === 'object') {
+      return { data: result[0] };
     }
 
     return result;
