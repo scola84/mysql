@@ -1,5 +1,1 @@
-import setup from './setup';
-
-export {
-  setup
-};
+export * from './setup';

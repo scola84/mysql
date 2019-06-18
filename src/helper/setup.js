@@ -1,6 +1,6 @@
 import { attach } from './setup/';
 
-export default function setup() {
+export function setup() {
   attach();
 }
 

@@ -1,7 +1,7 @@
 import sprintf from 'sprintf-js';
-import Snippet from './snippet';
+import { Snippet } from '../snippet';
 
-export default class Table extends Snippet {
+export class Table extends Snippet {
   constructor(options = {}) {
     super(options);
     this.setEscape(Snippet.ESCAPE_ID);

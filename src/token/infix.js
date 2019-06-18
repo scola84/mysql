@@ -30,7 +30,7 @@ const alias = {
   '~': 'bitInv',
 };
 
-const infix = [
+const list = [
   '!=',
   '&',
   '*',
@@ -68,7 +68,7 @@ const infix = [
   'UNION'
 ];
 
-export default infix.map((token) => {
+export const infix = list.map((token) => {
   const name = alias[token];
   return name ? { name, token } : token;
 });

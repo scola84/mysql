@@ -1,7 +1,6 @@
-import Snippet from './snippet';
-import Table from './table';
+export * from './snippet';
+import * as snippet from './snippet/';
 
 export {
-  Snippet,
-  Table
+  snippet
 };

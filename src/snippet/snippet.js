@@ -1,7 +1,7 @@
 import sqlstring from 'sqlstring';
 import toPath from 'lodash-es/toPath';
 
-export default class Snippet {
+export class Snippet {
   constructor(options = {}) {
     this._builder = null;
     this._escape = null;
@@ -169,6 +169,18 @@ export default class Snippet {
     return string;
   }
 
+  resolveEscape(value, type) {
+    if (type === Snippet.ESCAPE_VALUE) {
+      return sqlstring.escape(value);
+    }
+
+    if (type === Snippet.ESCAPE_ID) {
+      return sqlstring.escapeId(value);
+    }
+
+    return value;
+  }
+
   resolveInner(box, data) {
     let string = '';
 
@@ -191,7 +203,11 @@ export default class Snippet {
       count += 1;
     }
 
-    return this._parens && string ? `(${string})` : string;
+    return this.resolveParens(string, this._parens);
+  }
+
+  resolveParens(value, parens) {
+    return parens && value ? `(${value})` : value;
   }
 
   resolveValue(box, data, value) {
@@ -207,18 +223,6 @@ export default class Snippet {
       return this.resolveValue(box, data, value.resolve(box, data));
     }
 
-    return this.resolveEscape(value);
-  }
-
-  resolveEscape(value) {
-    if (this._escape === Snippet.ESCAPE_VALUE) {
-      return sqlstring.escape(value);
-    }
-
-    if (this._escape === Snippet.ESCAPE_ID) {
-      return sqlstring.escapeId(value);
-    }
-
-    return value;
+    return this.resolveEscape(value, this._escape);
   }
 }

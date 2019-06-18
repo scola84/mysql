@@ -1,5 +1,1 @@
-import attach from './attach';
-
-export {
-  attach
-};
+export * from './attach';

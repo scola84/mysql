@@ -1,5 +1,1 @@
-import QueryBuilder from './query';
-
-export {
-  QueryBuilder
-};
+export * from './query';

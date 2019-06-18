@@ -1,9 +1,9 @@
 import camel from 'lodash-es/camelCase';
 import { QueryBuilder } from '../../worker';
-import { Snippet } from '../../snippet';
+import { Snippet, snippet } from '../../snippet';
 import * as token from '../../token';
 
-export default function attach() {
+export function attach() {
   function normalize(item) {
     return typeof item === 'string' ? {
       name: camel(item),
@@ -19,24 +19,28 @@ export default function attach() {
   QueryBuilder.prototype.ESCAPE_VALUE = Snippet.ESCAPE_VALUE;
   QueryBuilder.prototype.ESCAPE_ID = Snippet.ESCAPE_ID;
 
-  QueryBuilder.attachFactory('query', '', {
+  QueryBuilder.attachFactory('', 'query', Snippet, {
     infix: ' '
   });
 
-  QueryBuilder.attachFactory('string', '', {
+  QueryBuilder.attachFactory('', 'string', Snippet, {
     escape: Snippet.ESCAPE_VALUE,
     infix: ' '
   });
 
-  QueryBuilder.attachFactory('from', '', {
+  QueryBuilder.attachFactory('', 'from', Snippet, {
     infix: '',
     prefix: 'FROM '
+  });
+
+  Object.keys(snippet).forEach((name) => {
+    QueryBuilder.attachFactory('', name, snippet[name]);
   });
 
   token.infix.forEach((item) => {
     item = normalize(item);
 
-    QueryBuilder.attachFactory(item.name, 'op', {
+    QueryBuilder.attachFactory('op', item.name, Snippet, {
       infix: ` ${item.token} `
     });
   });
@@ -44,7 +48,7 @@ export default function attach() {
   token.prefix.forEach((item) => {
     item = normalize(item);
 
-    QueryBuilder.attachFactory(item.name, 'pre', {
+    QueryBuilder.attachFactory('pre', item.name, Snippet, {
       prefix: `${item.token} `
     });
   });
@@ -52,7 +56,7 @@ export default function attach() {
   token.postfix.forEach((item) => {
     item = normalize(item);
 
-    QueryBuilder.attachFactory(item.name, 'post', {
+    QueryBuilder.attachFactory('post', item.name, Snippet, {
       postfix: ` ${item.token}`
     });
   });
@@ -60,9 +64,10 @@ export default function attach() {
   token.func.forEach((item) => {
     item = normalize(item);
 
-    QueryBuilder.attachFactory(item.name, 'fn', {
+    QueryBuilder.attachFactory('fn', item.name, Snippet, {
       parens: true,
       prefix: item.token
     });
   });
+
 }

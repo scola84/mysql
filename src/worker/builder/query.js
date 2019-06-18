@@ -2,24 +2,21 @@ import { Worker } from '@scola/worker';
 import camel from 'lodash-es/camelCase';
 import merge from 'lodash-es/merge';
 import mysql from 'mysql';
-import { Snippet, Table } from '../../snippet';
 
 const pools = {};
 const woptions = {};
 
-export default class QueryBuilder extends Worker {
-  static attachFactory(name, prefix, options = {}) {
+export class QueryBuilder extends Worker {
+  static attachFactory(prefix, name, object, options = {}) {
     QueryBuilder.prototype[
       camel(QueryBuilder.prototype[name] ?
         `${prefix}-${name}` : name)
     ] = function create(...list) {
-      return new Snippet(
-        Object.assign(options, {
-          builder: this,
-          list,
-          name
-        })
-      );
+      return new object(Object.assign(options, {
+        builder: this,
+        list,
+        name
+      }));
     };
   }
 
@@ -298,12 +295,5 @@ export default class QueryBuilder extends Worker {
     }
 
     return result;
-  }
-
-  table(...list) {
-    return new Table({
-      builder: this,
-      list
-    });
   }
 }
