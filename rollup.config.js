@@ -4,25 +4,36 @@ import commonjs from 'rollup-plugin-commonjs';
 import json from 'rollup-plugin-json';
 import resolve from 'rollup-plugin-node-resolve';
 
-export default {
-  input: './index.js',
-  external: [
-    'mysql'
-  ],
-  output: [{
-    file: 'dist/mysql.cjs.js',
-    format: 'cjs'
-  }, {
+const input = './index.js';
+
+const external = [
+  'mysql'
+];
+
+const plugins = [
+  resolve(),
+  commonjs(),
+  builtins(),
+  json(),
+  buble()
+];
+
+export default [{
+  input,
+  external,
+  output: {
     extend: true,
     file: 'dist/mysql.umd.js',
     format: 'umd',
     name: 'scola.mysql'
-  }],
-  plugins: [
-    resolve(),
-    commonjs(),
-    builtins(),
-    json(),
-    buble()
-  ]
-};
+  },
+  plugins
+}, {
+  input,
+  external,
+  output: {
+    file: 'dist/mysql.cjs.js',
+    format: 'cjs'
+  },
+  plugins
+}];
