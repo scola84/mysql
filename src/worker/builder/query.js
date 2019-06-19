@@ -3,8 +3,8 @@ import camel from 'lodash-es/camelCase';
 import merge from 'lodash-es/merge';
 import mysql from 'mysql';
 
+const hosts = {};
 const pools = {};
-const woptions = {};
 
 export class QueryBuilder extends Worker {
   static attachFactory(prefix, name, object, options = {}) {
@@ -20,19 +20,18 @@ export class QueryBuilder extends Worker {
     };
   }
 
-  static getOptions() {
-    return woptions;
+  static getHosts() {
+    return hosts;
   }
 
-  static setOptions(options) {
-    merge(woptions, options);
+  static setHosts(value) {
+    merge(hosts, value);
   }
 
   constructor(options = {}) {
     super(options);
 
     this._connection = null;
-    this._execute = null;
     this._host = null;
     this._key = null;
     this._nest = null;
@@ -41,7 +40,6 @@ export class QueryBuilder extends Worker {
     this._type = null;
 
     this.setConnection(options.connection);
-    this.setExecute(options.execute);
     this.setHost(options.host);
     this.setKey(options.key);
     this.setNest(options.nest);
@@ -53,7 +51,6 @@ export class QueryBuilder extends Worker {
   getOptions() {
     return Object.assign(super.getOptions(), {
       connection: this._connection,
-      execute: this._execute,
       host: this._host,
       key: this._key,
       nest: this._nest,
@@ -69,15 +66,6 @@ export class QueryBuilder extends Worker {
 
   setConnection(value = null) {
     this._connection = value;
-    return this;
-  }
-
-  getExecute() {
-    return this._execute;
-  }
-
-  setExecute(value = true) {
-    this._execute = value;
     return this;
   }
 
@@ -136,11 +124,6 @@ export class QueryBuilder extends Worker {
   }
 
   act(box, data, callback) {
-    if (this._query === null) {
-      this.pass(box, data, callback);
-      return;
-    }
-
     data = this.filter(box, data);
 
     const query = {
@@ -153,26 +136,32 @@ export class QueryBuilder extends Worker {
       console.log(query.sql);
     }
 
-    if (this._execute === false) {
-      this.pass(box, data, callback);
-      return;
-    }
-
-    this.createConnection(box, data, (error, connection, release = true) => {
-      if (error) {
-        this.handleError(box, data, callback, error);
+    this.open(box, data, (oerror, connection, close = true) => {
+      if (oerror) {
+        this.handleError(box, data, callback, oerror);
         return;
       }
 
-      connection.query(query, (queryError, result) => {
-        if (release) {
-          connection.release();
-        }
-
+      connection.query(query, (qerror, result) => {
         try {
-          this.handleQuery(box, data, callback, query, queryError, result);
-        } catch (tryError) {
-          this.handleError(box, data, callback, tryError);
+          if (close) {
+            connection.release();
+          }
+
+          if (qerror) {
+            this.handleError(box, data, callback, qerror);
+            return;
+          }
+
+          data = this.merge(box, data, {
+            key: this._key,
+            query,
+            result
+          });
+
+          this.pass(box, data, callback);
+        } catch (terror) {
+          this.handleError(box, data, callback, terror);
         }
       });
     });
@@ -182,29 +171,13 @@ export class QueryBuilder extends Worker {
     return this.setQuery(query);
   }
 
-  createConnection(box, data, callback) {
-    const pool = this.createPool(box, data);
-
-    if (this._connection) {
-      this._connection(box, data, pool, callback);
-      return;
-    }
-
-    if (box.connection) {
-      callback(null, box.connection, false);
-      return;
-    }
-
-    pool.getConnection(callback);
-  }
-
   createPool(box, data) {
     const hostname = this.formatHostname(box, data);
     const shard = this.formatShard(box, data);
 
     const index = shard === null ?
       0 :
-      Math.floor(shard / woptions[hostname].shards);
+      Math.floor(shard / hosts[hostname].shards);
 
     const pool = hostname + index;
 
@@ -212,7 +185,7 @@ export class QueryBuilder extends Worker {
       const options = this.resolve(
         box,
         data,
-        woptions[hostname] && woptions[hostname].options || {},
+        hosts[hostname] && hosts[hostname].options || {},
         index
       );
 
@@ -226,7 +199,7 @@ export class QueryBuilder extends Worker {
     return this.resolve(
       box,
       data,
-      woptions[hostname] && woptions[hostname].database || null
+      hosts[hostname] && hosts[hostname].database || null
     );
   }
 
@@ -234,7 +207,7 @@ export class QueryBuilder extends Worker {
     return this.resolve(
       box,
       data,
-      this._host && this._host.name || woptions.default || null
+      this._host && this._host.name || 'default' || null
     );
   }
 
@@ -266,21 +239,6 @@ export class QueryBuilder extends Worker {
     return error;
   }
 
-  handleQuery(box, data, callback, query, error, result) {
-    if (error) {
-      this.handleError(box, data, callback, error);
-      return;
-    }
-
-    data = this.merge(box, data, {
-      key: this._key,
-      query,
-      result
-    });
-
-    this.pass(box, data, callback);
-  }
-
   merge(box, data, { key, query, result }) {
     if (this._merge) {
       return this._merge(box, data, { key, query, result });
@@ -295,5 +253,21 @@ export class QueryBuilder extends Worker {
     }
 
     return result;
+  }
+
+  open(box, data, callback) {
+    const pool = this.createPool(box, data);
+
+    if (this._connection) {
+      this._connection(box, data, pool, callback);
+      return;
+    }
+
+    if (box.connection) {
+      callback(null, box.connection, false);
+      return;
+    }
+
+    pool.getConnection(callback);
   }
 }
