@@ -60,13 +60,14 @@ export default class Inserter extends Database {
       columns = columns(box, data);
     }
 
-    query.values[0] = columns;
-    query.values[1] = [];
-
     if (insert.value instanceof Database) {
-      query.sql = insert.value.format(box, data);
+      query.sql = (Array.isArray(columns) ? `(${columns.join(', ')}) ` : '')
+        + insert.value.format(box, data);
       return query;
     }
+
+    query.values[0] = columns;
+    query.values[1] = [];
 
     if (Array.isArray(insert.value) === true) {
       query.values[1] = insert.value;
