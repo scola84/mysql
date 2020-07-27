@@ -907,7 +907,7 @@ export default class Database extends Worker {
   _prepareCompareFieldRaw(field, column, operator, values, value) {
     values[values.length] = column;
     values[values.length] = value;
-    return '?? = ?';
+    return `?? ${operator || '='} ?`;
   }
 
   _prepareFrom(from, box, data) {
