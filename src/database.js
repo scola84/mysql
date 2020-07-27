@@ -413,6 +413,10 @@ export default class Database extends Worker {
       }
 
       this._handleTriggers('before', box, data, query, () => {
+        query.sql = this
+          .formatQuery(query)
+          .replace(/\.`\*`/g, '.*')
+
         connection.query(query, (error, result) => {
           if (release) {
             connection.release();
@@ -1113,7 +1117,7 @@ export default class Database extends Worker {
     }
 
     error.data = data;
-    error.sql = query && query.sql;
+    error.sql = query && mysql.format(query.sql, query.values);
     error.tag = 'mysql,database';
 
     this.fail(box, error, callback);
