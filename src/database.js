@@ -416,6 +416,7 @@ export default class Database extends Worker {
         query.sql = this
           .formatQuery(query)
           .replace(/\.`\*`/g, '.*')
+        delete query.values
 
         connection.query(query, (error, result) => {
           if (release) {
